@@ -1,0 +1,29 @@
+<html>
+  <head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/redux/4.0.5/redux.min.js"></script>
+  </head>
+
+  <body>
+    <div>Crossword Party</div>
+    <script>
+      url = 'ws://localhost:12312/ws';
+      c = new WebSocket(url);
+      
+      send = function(data){
+        $("#output").append((new Date())+ " ==> "+data+"\n")
+        c.send(data)
+      }
+
+      c.onmessage = function(msg){
+        $("#output").append((new Date())+ " <== "+msg.data+"\n")
+        console.log(msg)
+      }
+
+      c.onopen = function(){
+        setInterval( 
+          function(){ send("ping") }
+        , 1000 )
+      }
+    </script>
+  </body>
+</html>
