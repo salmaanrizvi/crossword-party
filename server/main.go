@@ -6,7 +6,10 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/salmaanrizvi/crossword-party/server/types"
+
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -88,6 +91,9 @@ type Client struct {
 
 	// Buffered channel of outbound messages.
 	send chan []byte
+
+	roomID uuid.UUID
+	userID uuid.UUID
 }
 
 // readPump pumps messages from the websocket connection to the hub.
@@ -102,15 +108,31 @@ func (c *Client) readPump() {
 	}()
 
 	for {
-		_, message, err := c.conn.ReadMessage()
+		messageType, message, err := c.conn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("error: %v", err)
 			}
 			break
 		}
-		// message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
-		fmt.Printf("rebroadcasting message: %s\n", message)
+
+		fmt.Printf("received messageType %d\n", messageType)
+		msg, err := types.NewMessageFrom(message)
+		if err != nil {
+			fmt.Printf("Error parsing message into Message struct: %+v", err)
+			continue
+		}
+
+		switch msg.messageType {
+		case "APPLY_PROGRESS":
+			ap, err := msg.GetApplyProgress()
+			if err != nil {
+				fmt.Printf("Error parsing message into Message struct: %+v", err)
+				continue
+			}
+			fmt.Printf("Successfully parsed ApplyProgress: %+v", ap)
+		}
+		// fmt.Printf("rebroadcasting message: %s\n", message)
 		c.hub.broadcast <- message
 	}
 }
@@ -131,7 +153,7 @@ func (c *Client) writePump() {
 		case message, ok := <-c.send:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
-				fmt.Println("closing connection because msg error: %+v", message)
+				fmt.Printf("closing connection because msg error: %+v\n", message)
 				// The hub closed the channel.
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
@@ -162,10 +184,7 @@ func (c *Client) writePump() {
 	}
 }
 
-/**
-hub.go
-*/
-
+// Hub socket
 type Hub struct {
 	// Registered clients.
 	clients map[*Client]bool
