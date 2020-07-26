@@ -12,9 +12,6 @@ type Hub struct {
 	// Registered clients.
 	channels map[uuid.UUID]*Channel
 
-	// Unregistered clients
-	clientPool map[*Client]bool
-
 	// Inbound messages from the clients.
 	broadcast chan *HubMessage
 
@@ -40,7 +37,6 @@ func NewHub() *Hub {
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		channels:   make(map[uuid.UUID]*Channel),
-		clientPool: make(map[*Client]bool),
 	}
 }
 
@@ -67,7 +63,6 @@ func (h *Hub) RegisterClient(client *Client) {
 			h.channels[client.channelID] = channel
 		}
 		channel.clients[client.ID] = client
-		delete(h.clientPool, client)
 
 		fmt.Printf("Registered %s to %s\n", client.ID, client.channelID)
 	}
