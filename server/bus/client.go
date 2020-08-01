@@ -39,6 +39,7 @@ type Client struct {
 }
 
 func NewClient(hub *Hub, conn *websocket.Conn) *Client {
+	// TODO: SetCloseHandler, SetPingHandler, SetPongHandler
 	return &Client{
 		hub:  hub,
 		conn: conn,
@@ -47,14 +48,12 @@ func NewClient(hub *Hub, conn *websocket.Conn) *Client {
 }
 
 func (c *Client) Register(id, channelID uuid.UUID) {
-	if id != uuid.Nil {
-		c.ID = id
+	if id == uuid.Nil || channelID == uuid.Nil {
+		return
 	}
 
-	if channelID != uuid.Nil {
-		c.channelID = channelID
-	}
-
+	c.ID = id
+	c.channelID = channelID
 	c.hub.register <- c
 }
 
@@ -88,26 +87,31 @@ func (c *Client) ReadPump() {
 			continue
 		}
 
-		fmt.Printf("Parsed message %+v\n", msg)
+		if actions.IsIgnoredAction(msg.Type) {
+			continue
+		}
 
 		switch msg.Type {
+		// register is a special case that we don't want to rebroadcast
 		case actions.Register.String():
 			c.Register(msg.From, msg.Channel)
 			continue
 
-		case actions.ApplyProgress.String():
-			_, err := actions.NewApplyProgessMessageFrom(message)
-			if err != nil {
-				fmt.Printf("Error parsing payload into ApplyProgressMessage struct: %+v\n%s\n\n", err, message)
-				// continue
-			}
-			// fmt.Printf("Successfully parsed ApplyProgressMessage: %+v", ap)
+			// case actions.Guess.String():
+			// 	guess, err := actions.NewGuessMessageFrom(message)
+			// case actions.ApplyProgress.String():
+			// 	_, err := actions.NewApplyProgessMessageFrom(message)
+			// 	if err != nil {
+			// 		fmt.Printf("Error parsing payload into ApplyProgressMessage struct: %+v\n%s\n\n", err, message)
+			// 		// continue
+			// 	}
+
 			// only explicitly let action types we care about pass through
 			// default:
 			// 	continue
 		}
 
-		c.hub.broadcast <- &HubMessage{data: message, client: c}
+		c.hub.broadcast <- &HubMessage{data: message, client: c, parsed: msg}
 	}
 }
 

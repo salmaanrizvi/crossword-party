@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	cmap "github.com/orcaman/concurrent-map"
+	"github.com/salmaanrizvi/crossword-party/actions"
 )
 
 // Hub for handling client connections on channels
@@ -25,6 +26,7 @@ type Hub struct {
 type HubMessage struct {
 	data   []byte
 	client *Client
+	parsed *actions.Message
 }
 
 type Channel struct {
@@ -96,7 +98,6 @@ func (h *Hub) UnregisterClient(client *Client) {
 
 	// Remove client from channel & close the connection
 	channel.clients.Remove(client.ID.String())
-	close(client.send)
 
 	// optionally, remove channel from hub if it has no clients left
 	if channel.clients.Count() == 0 {
@@ -121,9 +122,7 @@ func (h *Hub) Broadcast(message *HubMessage) {
 		return
 	}
 
-	connCount := channel.clients.Count()
-	fmt.Printf("Received message from %s to broadcast to %d users on channel %s\n", message.client.ID, connCount, channelID)
-
+	fmt.Println("Broadcasting %s", message.parsed.Type)
 	for to, _client := range channel.clients.Items() {
 		// send to everyone else in the channel
 		if to == from {
@@ -131,7 +130,7 @@ func (h *Hub) Broadcast(message *HubMessage) {
 			continue
 		}
 
-		fmt.Printf("Sending to %s in channel\n", to)
+		fmt.Printf("Sent to %s in channel\n", to)
 		client, ok := _client.(*Client)
 		if !ok {
 			fmt.Println("Unknown client type (%T) to broadcast to... skipping", _client)
