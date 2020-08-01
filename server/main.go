@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/salmaanrizvi/crossword-party/bus"
 )
@@ -54,10 +53,7 @@ func wshandler(hub *bus.Hub, w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := bus.NewClient(hub, conn)
-	client.Register(uuid.Nil, uuid.Nil)
 
-	// Allow collection of memory referenced by the caller by doing all work in
-	// new goroutines.
 	go client.WritePump()
 	go client.ReadPump()
 }
