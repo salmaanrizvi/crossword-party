@@ -70,3 +70,35 @@ type Cell struct {
 	Timestamp int     `json:"timestamp"`
 	CellType  int     `json:"type"`
 }
+
+type SelectCellMessage struct {
+	Message
+	Payload *SelectCellPayload `json:"payload"`
+}
+
+type SelectCellPayload struct {
+	Index         int  `json:"index"`
+	isMiddleClick bool `json:"isMiddleClick"`
+}
+
+type GuessMessage struct {
+	Message
+	Payload *GuessPayload `json:"payload"`
+}
+
+type GuessPayload struct {
+	BlankDelta       int    `json:"blankDelta"`
+	IncorrectDelta   int    `json:"incorrectDelta"`
+	Index            int    `json:"index"`
+	InPencilMode     bool   `json:"inPencilMode"`
+	AutocheckEnabled bool   `json:"autocheckEnabled"`
+	Value            string `json:"value"`
+	FromRebus        bool   `json:"fromRebus"`
+	Now              int    `json:"now"`
+}
+
+func NewGuessMessageFrom(data []byte) (guess *GuessMessage, err error) {
+	guess = &GuessMessage{}
+	err = json.Unmarshal(data, guess)
+	return guess, err
+}
