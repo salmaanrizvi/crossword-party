@@ -22,16 +22,6 @@ func NewMessageFrom(data []byte) (msg *Message, err error) {
 	return msg, err
 }
 
-// func (msg *Message) GetApplyProgress() (ap *ApplyProgress, err error) {
-// 	ap = &ApplyProgress{}
-// 	err = json.Unmarshal(msg.Payload, ap)
-// 	return ap, err
-// }
-
-// type Guess struct {
-
-// }
-
 type ApplyProgressMessage struct {
 	Message
 	Selection *Selection            `json:"selection"`

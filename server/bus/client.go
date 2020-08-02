@@ -111,7 +111,7 @@ func (c *Client) ReadPump() {
 			// 	continue
 		}
 
-		c.hub.broadcast <- &HubMessage{data: message, client: c, parsed: msg}
+		c.hub.broadcast <- &HubMessage{data: message, client: c, action: msg.Type}
 	}
 }
 

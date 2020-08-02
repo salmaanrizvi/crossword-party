@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	cmap "github.com/orcaman/concurrent-map"
-	"github.com/salmaanrizvi/crossword-party/actions"
 )
 
 // Hub for handling client connections on channels
@@ -26,7 +25,7 @@ type Hub struct {
 type HubMessage struct {
 	data   []byte
 	client *Client
-	parsed *actions.Message
+	action string
 }
 
 type Channel struct {
@@ -122,7 +121,7 @@ func (h *Hub) Broadcast(message *HubMessage) {
 		return
 	}
 
-	fmt.Println("Broadcasting %s", message.parsed.Type)
+	fmt.Println("Broadcasting %s", message.action)
 	for to, _client := range channel.clients.Items() {
 		// send to everyone else in the channel
 		if to == from {
@@ -130,7 +129,6 @@ func (h *Hub) Broadcast(message *HubMessage) {
 			continue
 		}
 
-		fmt.Printf("Sent to %s in channel\n", to)
 		client, ok := _client.(*Client)
 		if !ok {
 			fmt.Println("Unknown client type (%T) to broadcast to... skipping", _client)
@@ -142,5 +140,7 @@ func (h *Hub) Broadcast(message *HubMessage) {
 		default:
 			h.UnregisterClient(client)
 		}
+
+		fmt.Printf("Sent to %s in channel\n", to)
 	}
 }
