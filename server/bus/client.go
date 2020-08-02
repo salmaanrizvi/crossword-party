@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 	"github.com/salmaanrizvi/crossword-party/actions"
+	"github.com/salmaanrizvi/crossword-party/config"
 )
 
 const (
@@ -47,8 +48,15 @@ func NewClient(hub *Hub, conn *websocket.Conn) *Client {
 	}
 }
 
-func (c *Client) Register(id, channelID uuid.UUID) {
+func (c *Client) Register(id, channelID uuid.UUID, clientVersion string) {
 	if id == uuid.Nil || channelID == uuid.Nil {
+		// TODO: log error here
+		return
+	}
+
+	if !config.Get().IsValidClient(clientVersion) {
+		fmt.Println("Rejecting client", id)
+		c.Unregister()
 		return
 	}
 
@@ -58,8 +66,10 @@ func (c *Client) Register(id, channelID uuid.UUID) {
 }
 
 func (c *Client) Unregister() {
-	c.hub.unregister <- c
+	// c.hub.unregister <- c
+	close(c.send)
 	c.conn.Close()
+	fmt.Println("unregistered client")
 }
 
 // ReadPump pumps messages from the websocket connection to the hub.
@@ -68,10 +78,6 @@ func (c *Client) Unregister() {
 // ensures that there is at most one reader on a connection by executing all
 // reads from this goroutine.
 func (c *Client) ReadPump() {
-	defer func() {
-		c.Unregister()
-	}()
-
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
@@ -94,7 +100,7 @@ func (c *Client) ReadPump() {
 		switch msg.Type {
 		// register is a special case that we don't want to rebroadcast
 		case actions.Register.String():
-			c.Register(msg.From, msg.Channel)
+			c.Register(msg.From, msg.Channel, msg.ClientVersion)
 			continue
 
 			// case actions.Guess.String():
@@ -124,8 +130,9 @@ func (c *Client) WritePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
-		c.conn.Close()
+		c.hub.unregister <- c
 	}()
+
 	for {
 		select {
 		case message, ok := <-c.send:
