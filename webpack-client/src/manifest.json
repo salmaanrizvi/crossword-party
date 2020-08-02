@@ -1,0 +1,32 @@
+{
+  "name": "Crossword Party 2",
+  "version": "1.0.0",
+  "description": "Play the NYT crossword together",
+
+  "options_page": "options.html",
+  "background": {
+    "page": "background.html"
+  },
+  "browser_action": {
+    "default_popup": "popup.html",
+    "default_icon": "icon-34.png"
+  },
+  "icons": {
+    "128": "icon-128.png"
+  },
+  "manifest_version": 2,
+  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
+  "web_accessible_resources": [
+    "injectMiddleware.bundle.js"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["contentScript.bundle.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "permissions": [
+    "storage"
+  ]
+}
