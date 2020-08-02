@@ -29,16 +29,15 @@ const connect = () => {
   ws.from = uuidv4()
   ws.channel = channel //'58c4c90b-041d-4232-9ae9-e219679b1130' //uuidv4()
   ws.version = process.env.__CWP_APP_VERSION   
- 
   ws.onopen = () => ws.send(
     JSON.stringify({
       type: __CROSSWORD_PARTY_REGISTER,
       from: ws.from,
       channel: ws.channel,
       timestamp: (new Date).toISOString(),
-      appVersion: ws.version,
+      clientVersion: ws.version,
     })
-  );
+  )
   
   ws.onmessage = msg => {
     const { target: websocket, data } = msg
@@ -56,6 +55,10 @@ const connect = () => {
 
       ws.store.dispatch(action)
     }
+  }
+
+  ws.onclose = (...args) => {
+    console.log('received close event', ...args)
   }
 
   return ws
