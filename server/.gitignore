@@ -3,4 +3,4 @@ vendor/
 
 main
 
-.env
+.prod.env
