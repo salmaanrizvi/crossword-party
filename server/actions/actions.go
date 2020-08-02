@@ -9,10 +9,11 @@ import (
 
 //Message for generic redux message
 type Message struct {
-	Type      string    `json:"type"`
-	From      uuid.UUID `json:"from"`
-	Channel   uuid.UUID `json:"channel"`
-	Timestamp time.Time `json:"timestamp"`
+	Type          string    `json:"type"`
+	From          uuid.UUID `json:"from"`
+	Channel       uuid.UUID `json:"channel"`
+	Timestamp     time.Time `json:"timestamp"`
+	ClientVersion string    `json:"clientVersion"`
 }
 
 //NewMessageFrom parses websocket message into a Message struct

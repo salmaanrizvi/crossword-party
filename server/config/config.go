@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/Masterminds/semver"
 	"github.com/joho/godotenv"
 )
 
@@ -15,13 +16,16 @@ const (
 )
 
 type Config struct {
-	AppVersion string
-	Env        string
-	LogLevel   string
-	Port       int
-	CertFile   string
-	KeyFile    string
+	AppVersion      *semver.Version
+	Env             string
+	LogLevel        string
+	Port            int
+	CertFile        string
+	KeyFile         string
+	SupportedClient *SupportedClient
 }
+
+var serverConfig *Config
 
 func init() {
 	env, ok := os.LookupEnv("ENVIRONMENT")
@@ -31,15 +35,29 @@ func init() {
 
 	filename := fmt.Sprintf(".%s.env", env)
 	godotenv.Load(filename)
+	serverConfig = new()
 }
 
-func New() *Config {
+func Get() *Config {
+	return serverConfig
+}
+
+func new() *Config {
+	appVersionStr := getEnv("APP_VERSION", "1.0.0", false)
+	appVersion := semver.MustParse(appVersionStr)
+	supportedClients := GetSupportedClients(appVersion)
+
 	return &Config{
-		AppVersion: getEnv("APP_VERSION", "1.0.0", false),
+		// Non-required configs
+		AppVersion: appVersion,
 		Env:        getEnv("ENVIRONMENT", Development, false),
 		Port:       getEnvAsInt("PORT", 8000, false),
-		CertFile:   getEnv("CERT_FILE", "", true),
-		KeyFile:    getEnv("KEY_FILE", "", true),
+		LogLevel:   getEnv("LOG_LEVEL", "debug", false),
+
+		// Required configs
+		CertFile:        getEnv("CERT_FILE", "", true),
+		KeyFile:         getEnv("KEY_FILE", "", true),
+		SupportedClient: supportedClients,
 	}
 }
 
@@ -62,4 +80,13 @@ func getEnvAsInt(key string, defaultVal int, required bool) int {
 	}
 
 	return defaultVal
+}
+
+func (c *Config) IsValidClient(clientVerStr string) bool {
+	clientVersion, err := semver.NewVersion(clientVerStr)
+	if err != nil {
+		return false
+	}
+
+	return c.SupportedClient.Constraints.Check(clientVersion)
 }
