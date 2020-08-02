@@ -7,14 +7,17 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/salmaanrizvi/crossword-party/bus"
+	"github.com/salmaanrizvi/crossword-party/config"
 )
 
 /**
 main.go
 */
-const port int = 8000
+var conf *config.Config
 
 func main() {
+	conf = config.New()
+
 	router := gin.Default()
 
 	hub := bus.NewHub()
@@ -29,9 +32,9 @@ func main() {
 	})
 
 	router.RunTLS(
-		fmt.Sprintf("localhost:%d", port),
-		"./localhost/localhost.crt",
-		"./localhost/localhost.key",
+		fmt.Sprintf(":%d", conf.Port),
+		conf.CertFile,
+		conf.KeyFile,
 	)
 }
 
