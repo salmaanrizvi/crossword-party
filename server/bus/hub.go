@@ -2,6 +2,7 @@ package bus
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	cmap "github.com/orcaman/concurrent-map"
@@ -58,6 +59,34 @@ func (h *Hub) Run() {
 	}
 }
 
+func (h *Hub) Stats() {
+	ticker := time.NewTicker(5 * time.Second)
+	go func() {
+		defer ticker.Stop()
+
+		for {
+			select {
+			case _, ok := <-ticker.C:
+				if !ok {
+					return
+				}
+
+				h.printStats()
+			}
+		}
+	}()
+}
+
+func (h *Hub) printStats() {
+	fmt.Println(time.Now())
+	fmt.Printf("Channels Count: %d\n", h.channels.Count())
+	for channelID, val := range h.channels.Items() {
+		if channel, ok := val.(*Channel); ok {
+			fmt.Printf("Channel %s: %d connected clients\n", channelID, channel.clients.Count())
+		}
+	}
+}
+
 // RegisterClient ...
 func (h *Hub) RegisterClient(client *Client) {
 	if client.channelID == uuid.Nil {
@@ -79,8 +108,10 @@ func (h *Hub) RegisterClient(client *Client) {
 
 // UnregisterClient ...
 func (h *Hub) UnregisterClient(client *Client) {
-	// No matter what, close the send channel on the client
-	defer close(client.send)
+	if client.channelID == uuid.Nil {
+		fmt.Printf("Cant unregister client (%s) from nil channel uuid\n", client.ID)
+		return
+	}
 
 	tmp, ok := h.channels.Get(client.channelID.String())
 	if !ok {
@@ -101,6 +132,7 @@ func (h *Hub) UnregisterClient(client *Client) {
 	// optionally, remove channel from hub if it has no clients left
 	if channel.clients.Count() == 0 {
 		h.channels.Remove(client.channelID.String())
+		fmt.Printf("Channel %s is empty - removing\n", client.channelID)
 	}
 }
 

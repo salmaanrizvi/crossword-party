@@ -13,15 +13,15 @@ import (
 /**
 main.go
 */
-var conf *config.Config
 
 func main() {
-	conf = config.New()
+	conf := config.Get()
 
 	router := gin.Default()
 
 	hub := bus.NewHub()
 	go hub.Run()
+	hub.Stats()
 
 	router.GET("/", func(c *gin.Context) {
 		c.String(200, "We got Gin")
