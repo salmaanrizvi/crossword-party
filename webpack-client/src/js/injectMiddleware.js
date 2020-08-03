@@ -25,7 +25,7 @@ const connect = () => {
     return null
   }
 
-  const ws = new WebSocket('wss://localhost:8000/ws');
+  const ws = new WebSocket(process.env.__API_BASE_URL)
   ws.from = uuidv4()
   ws.channel = channel //'58c4c90b-041d-4232-9ae9-e219679b1130' //uuidv4()
   ws.version = process.env.__CWP_APP_VERSION   

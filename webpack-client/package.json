@@ -4,6 +4,7 @@
   "description": "Play the NYT Crossword together!",
   "scripts": {
     "build": "node utils/build.js",
+    "build:prod": "NODE_ENV=production node utils/build.js",
     "start": "node utils/webserver.js"
   },
   "devDependencies": {

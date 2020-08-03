@@ -9,6 +9,13 @@ var webpack = require("webpack"),
     packageJson = require("./package.json")
 
 process.env.__CWP_APP_VERSION = packageJson.version
+
+if (process.env.NODE_ENV == "production") {
+  process.env.__API_BASE_URL = 'wss://crossword-party.herokuapp.com/ws'
+} else {
+  process.env.__API_BASE_URL = 'wss://localhost:8000/ws'
+}
+
 // load the secrets
 var alias = {};
 
@@ -62,7 +69,7 @@ var options = {
     // clean the build folder
     new CleanWebpackPlugin(),
     // expose and write the allowed env vars on the compiled bundle
-    new webpack.EnvironmentPlugin(["NODE_ENV", "__CWP_APP_VERSION"]),
+    new webpack.EnvironmentPlugin(["NODE_ENV", "__CWP_APP_VERSION", "__API_BASE_URL"]),
     new CopyWebpackPlugin([{
       from: "src/manifest.json",
       transform: function (content, path) {
