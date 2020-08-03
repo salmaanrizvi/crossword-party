@@ -38,10 +38,6 @@ func init() {
 	serverConfig = new()
 }
 
-func Get() *Config {
-	return serverConfig
-}
-
 func new() *Config {
 	appVersionStr := getEnv("APP_VERSION", "1.0.0", false)
 	appVersion := semver.MustParse(appVersionStr)
@@ -53,12 +49,29 @@ func new() *Config {
 		Env:        getEnv("ENVIRONMENT", Development, false),
 		Port:       getEnvAsInt("PORT", 8000, false),
 		LogLevel:   getEnv("LOG_LEVEL", "debug", false),
+		CertFile:   getEnv("CERT_FILE", "", false),
+		KeyFile:    getEnv("KEY_FILE", "", false),
 
 		// Required configs
-		CertFile:        getEnv("CERT_FILE", "", true),
-		KeyFile:         getEnv("KEY_FILE", "", true),
 		SupportedClient: supportedClients,
 	}
+}
+
+func Get() *Config {
+	return serverConfig
+}
+
+func (c *Config) RunTLS() bool {
+	retirn c.CertFile != "" && c.KeyFile != ""
+}
+
+func (c *Config) IsValidClient(clientVerStr string) bool {
+	clientVersion, err := semver.NewVersion(clientVerStr)
+	if err != nil {
+		return false
+	}
+
+	return c.SupportedClient.Constraints.Check(clientVersion)
 }
 
 func getEnv(key string, defaultVal string, required bool) string {
@@ -82,11 +95,3 @@ func getEnvAsInt(key string, defaultVal int, required bool) int {
 	return defaultVal
 }
 
-func (c *Config) IsValidClient(clientVerStr string) bool {
-	clientVersion, err := semver.NewVersion(clientVerStr)
-	if err != nil {
-		return false
-	}
-
-	return c.SupportedClient.Constraints.Check(clientVersion)
-}

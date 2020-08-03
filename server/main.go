@@ -31,11 +31,15 @@ func main() {
 		wshandler(hub, c.Writer, c.Request)
 	})
 
-	router.RunTLS(
-		fmt.Sprintf(":%d", conf.Port),
-		conf.CertFile,
-		conf.KeyFile,
-	)
+	if conf.RunTLS() {
+		router.RunTLS(
+			fmt.Sprintf(":%d", conf.Port),
+			conf.CertFile,
+			conf.KeyFile,
+		)
+	} else {
+		router.Run(fmt.Sprintf(":%d", conf.Port))
+	}
 }
 
 func checkOrigin(r *http.Request) bool {
