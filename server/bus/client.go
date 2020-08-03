@@ -7,8 +7,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
-	"github.com/salmaanrizvi/crossword-party/actions"
-	"github.com/salmaanrizvi/crossword-party/config"
+	"github.com/salmaanrizvi/crossword-party/server/actions"
+	"github.com/salmaanrizvi/crossword-party/server/config"
 )
 
 const (

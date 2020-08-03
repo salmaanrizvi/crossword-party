@@ -6,8 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/salmaanrizvi/crossword-party/bus"
-	"github.com/salmaanrizvi/crossword-party/config"
+	"github.com/salmaanrizvi/crossword-party/server/bus"
+	"github.com/salmaanrizvi/crossword-party/server/config"
 )
 
 /**
