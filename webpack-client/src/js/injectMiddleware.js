@@ -94,20 +94,6 @@ const onmessageMiddleware = websocket => store => next => action => {
   return next(action);
 }
 
-const disruptActionMiddleware = websocket => store => next => action => {
-  // TODO: think about this
-
-  // switch (action.type) {
-  //   case "APPLY_PROGRESS":
-  //     // if this is from nytimes app
-  //     if (action.dispatched) {
-  //       action.type = '_APPLY_PROGRESS'
-  //     }
-  // }
-
-  next(action)
-}
-
 const handleActionMiddleware = websocket => store => next => action => {
   if (!websocket) {
     return next(action)
@@ -147,7 +133,6 @@ const ws = connect()
 const mwares = [
   logger,
 
-  disruptActionMiddleware(ws),
   handleActionMiddleware(ws),
 
   onmessageMiddleware(ws),
