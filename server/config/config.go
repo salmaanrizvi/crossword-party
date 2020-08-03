@@ -62,7 +62,7 @@ func Get() *Config {
 }
 
 func (c *Config) RunTLS() bool {
-	retirn c.CertFile != "" && c.KeyFile != ""
+	return c.CertFile != "" && c.KeyFile != ""
 }
 
 func (c *Config) IsValidClient(clientVerStr string) bool {
@@ -94,4 +94,3 @@ func getEnvAsInt(key string, defaultVal int, required bool) int {
 
 	return defaultVal
 }
-
