@@ -39,7 +39,8 @@ func main() {
 }
 
 func checkOrigin(r *http.Request) bool {
-	return true
+	origin := r.Header.Get("Origin")
+	return origin == "https://www.nytimes.com"
 }
 
 var wsupgrader = websocket.Upgrader{
