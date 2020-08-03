@@ -59,22 +59,20 @@ func (h *Hub) Run() {
 	}
 }
 
-func (h *Hub) Stats() {
-	ticker := time.NewTicker(5 * time.Second)
-	go func() {
-		defer ticker.Stop()
+func (h *Hub) Stats(timeInSeconds int) {
+	ticker := time.NewTicker(time.Duration(timeInSeconds) * time.Second)
+	defer ticker.Stop()
 
-		for {
-			select {
-			case _, ok := <-ticker.C:
-				if !ok {
-					return
-				}
-
-				h.printStats()
+	for {
+		select {
+		case _, ok := <-ticker.C:
+			if !ok {
+				return
 			}
+
+			h.printStats()
 		}
-	}()
+	}
 }
 
 func (h *Hub) printStats() {

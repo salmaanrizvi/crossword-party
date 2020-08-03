@@ -21,7 +21,7 @@ func main() {
 
 	hub := bus.NewHub()
 	go hub.Run()
-	hub.Stats()
+	go hub.Stats(conf.LogStatsInterval)
 
 	router.GET("/", func(c *gin.Context) {
 		c.String(200, "We got Gin")

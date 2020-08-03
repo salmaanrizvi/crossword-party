@@ -16,10 +16,13 @@ const (
 )
 
 type Config struct {
-	AppVersion      *semver.Version
-	Env             string
-	LogLevel        string
-	Port            int
+	AppVersion *semver.Version
+	Env        string
+	Port       int
+
+	LogLevel         string
+	LogStatsInterval int
+
 	CertFile        string
 	KeyFile         string
 	SupportedClient *SupportedClient
@@ -45,12 +48,13 @@ func new() *Config {
 
 	return &Config{
 		// Non-required configs
-		AppVersion: appVersion,
-		Env:        getEnv("ENVIRONMENT", Development, false),
-		Port:       getEnvAsInt("PORT", 8000, false),
-		LogLevel:   getEnv("LOG_LEVEL", "debug", false),
-		CertFile:   getEnv("CERT_FILE", "", false),
-		KeyFile:    getEnv("KEY_FILE", "", false),
+		AppVersion:       appVersion,
+		Env:              getEnv("ENVIRONMENT", Development, false),
+		Port:             getEnvAsInt("PORT", 8000, false),
+		LogLevel:         getEnv("LOG_LEVEL", "debug", false),
+		LogStatsInterval: getEnvAsInt("LOG_STATS_INTERVAL", 300, false),
+		CertFile:         getEnv("CERT_FILE", "", false),
+		KeyFile:          getEnv("KEY_FILE", "", false),
 
 		// Required configs
 		SupportedClient: supportedClients,
