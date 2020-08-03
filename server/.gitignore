@@ -2,5 +2,6 @@
 vendor/
 
 main
+server
 
 .prod.env
