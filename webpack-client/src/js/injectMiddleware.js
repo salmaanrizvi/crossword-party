@@ -27,15 +27,15 @@ const connect = () => {
 
   const ws = new WebSocket(process.env.__API_BASE_URL)
   ws.from = uuidv4()
-  ws.channel = channel //'58c4c90b-041d-4232-9ae9-e219679b1130' //uuidv4()
-  ws.version = process.env.__CWP_APP_VERSION   
+  ws.channel = channel
+  ws.clientVersion = process.env.__CWP_APP_VERSION   
   ws.onopen = () => ws.send(
     JSON.stringify({
       type: __CROSSWORD_PARTY_REGISTER,
       from: ws.from,
       channel: ws.channel,
       timestamp: (new Date).toISOString(),
-      clientVersion: ws.version,
+      clientVersion: ws.clientVersion,
     })
   )
   
@@ -73,6 +73,7 @@ const postActionMiddleware = websocket => store => next => action => {
     action.dispatched = true
     websocket.send(JSON.stringify(action));  
   }
+
   return next(action);
 }
 
@@ -130,16 +131,18 @@ const getSelectCellPayload = selection => {
 }
 
 const ws = connect()
-const mwares = [
-  logger,
-
-  handleActionMiddleware(ws),
-
-  onmessageMiddleware(ws),
-  postActionMiddleware(ws),
-]
 
 if (ws) {
+  let mwares = [
+    handleActionMiddleware(ws),
+    onmessageMiddleware(ws),
+    postActionMiddleware(ws),
+  ]
+
+  if (process.env.NODE_ENV === 'development') {
+    mwares.unshift(logger)
+  }
+
   // key to backdoor :)
   window.devToolsExtension = () => applyMiddleware(...mwares)
 }
