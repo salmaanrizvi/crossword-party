@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 
 const __CROSSWORD_PARTY_CHANNEL_PARAMETER = 'cwp_channel'
 const __CROSSWORD_PARTY_REGISTER = '__CROSSWORD_PARTY_REGISTER'
+const __CROSSWORD_PARTY_SET_GAME_ID = '__CROSSWORD_PARTY_SET_GAME_ID'
 
 const getChannel = () => {
   const search = window.location.search.slice(1)
@@ -36,11 +37,12 @@ const connect = () => {
       channel: ws.channel,
       timestamp: (new Date).toISOString(),
       clientVersion: ws.clientVersion,
+      gameId: ws.gameId,
     })
   )
   
   ws.onmessage = msg => {
-    const { target: websocket, data } = msg
+    const { data } = msg
   
     let action
     try {
@@ -50,8 +52,8 @@ const connect = () => {
       return
     }
   
-    if (action.from !== websocket.from) {
-      if (!websocket.store && websocket.store.dispatch) return
+    if (action.from !== ws.from) {
+      if (!ws.store && ws.store.dispatch) return
 
       ws.store.dispatch(action)
     }
@@ -64,13 +66,50 @@ const connect = () => {
   return ws
 }
 
+const setGameIdMiddleware = websocket => store => next => action => {
+  if (!websocket || websocket.gameId) {
+    return next(action)
+  }
+
+  const {
+    gamePageData: {
+      meta: {
+        id: gameId
+      } = {}
+    } = {}
+  } = store.getState()
+
+  if (!gameId) {
+    return next(action)
+  }
+
+  websocket.gameId = gameId
+  websocket.send(
+    JSON.stringify({
+      type: __CROSSWORD_PARTY_SET_GAME_ID,
+      from: websocket.from,
+      channel: websocket.channel,
+      timestamp: (new Date).toISOString(),
+      clientVersion: websocket.clientVersion,
+      gameId,
+    })
+  )
+
+  return next(action)
+}
+
 const postActionMiddleware = websocket => store => next => action => {
+  if (!websocket) {
+    return next(action)
+  }
+
   // Check if action was sent to us from websocket
   if (!action.channel && websocket.readyState == 1) {
     action.from = websocket.from
     action.channel = websocket.channel
+    action.clientVersion = websocket.clientVersion
+    action.gameId = websocket.gameId
     action.timestamp = (new Date).toISOString()
-    action.dispatched = true
     websocket.send(JSON.stringify(action));  
   }
 
@@ -134,6 +173,7 @@ const ws = connect()
 
 if (ws) {
   let mwares = [
+    setGameIdMiddleware(ws),
     handleActionMiddleware(ws),
     onmessageMiddleware(ws),
     postActionMiddleware(ws),
