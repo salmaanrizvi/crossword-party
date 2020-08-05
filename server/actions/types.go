@@ -6,6 +6,7 @@ type Action int
 
 const (
 	Register Action = iota
+	SetGameId
 	ApplyProgress
 	Guess
 	SelectCell
@@ -33,6 +34,7 @@ var IgnoredActions = []Action{
 
 var actionStrings = []string{
 	"__CROSSWORD_PARTY_REGISTER",
+	"__CROSSWORD_PARTY_SET_GAME_ID",
 	"APPLY_PROGRESS",
 	"GUESS",
 	"SELECT_CELL",

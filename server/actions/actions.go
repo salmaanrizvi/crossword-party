@@ -14,6 +14,7 @@ type Message struct {
 	Channel       uuid.UUID `json:"channel"`
 	Timestamp     time.Time `json:"timestamp"`
 	ClientVersion string    `json:"clientVersion"`
+	GameId        int       `json:"gameId"`
 }
 
 //NewMessageFrom parses websocket message into a Message struct
