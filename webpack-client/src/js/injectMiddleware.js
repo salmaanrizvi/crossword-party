@@ -31,7 +31,8 @@ const connect = () => {
   const ws = new WebSocket(process.env.__API_BASE_URL)
   ws.from = uuidv4()
   ws.channel = channel
-  ws.clientVersion = process.env.__CWP_APP_VERSION   
+  ws.clientVersion = process.env.__CWP_APP_VERSION
+
   ws.onopen = () => ws.send(
     JSON.stringify({
       type: __CROSSWORD_PARTY_REGISTER,
@@ -54,13 +55,16 @@ const connect = () => {
       return
     }
   
+    // extra check to not dispatch our own actions if we
+    // somehow receive them on the socket
     if (action.from !== ws.from) {
-      if (!ws.store && ws.store.dispatch) return
+      if (!ws.dispatch) return
 
-      ws.store.dispatch(action)
+      ws.dispatch(action)
     }
   }
 
+  // TODO: what should we do if we receive a close event?
   ws.onclose = (...args) => {
     console.log('received close event', ...args)
   }
@@ -86,6 +90,7 @@ const setGameIdMiddleware = websocket => store => next => action => {
   }
 
   websocket.gameId = gameId
+
   websocket.send(
     JSON.stringify({
       type: __CROSSWORD_PARTY_SET_GAME_ID,
@@ -101,7 +106,7 @@ const setGameIdMiddleware = websocket => store => next => action => {
 }
 
 const postActionMiddleware = websocket => store => next => action => {
-  if (isValidWs(websocket)) {
+  if (!isValidWs(websocket)) {
     return next(action)
   }
 
@@ -118,24 +123,21 @@ const postActionMiddleware = websocket => store => next => action => {
   return next(action);
 }
 
-const logger = store => next => action => {
-  console.group(action.type);
-  console.log('prev state', store.getState());
-  console.log('action', action);
-  let result = next(action);
-  console.log('next state', store.getState());
-  console.groupEnd();
-  return result;
-}
-
-const onmessageMiddleware = websocket => store => next => action => {
-  if (isValidWs(websocket)) {
-    websocket.store = store
+// setDispatchMiddleware is solely meant to keep the referenced store
+// on the websocket instance up to date for when the 
+const setDispatchMiddleware = websocket => store => next => action => {
+  if (isValidWs(websocket) && !websocket.dispatch) {
+    websocket.dispatch = store.dispatch
   }
 
   return next(action);
 }
 
+// handleActionMiddleware acts only on messages received on the socket
+// by validating the action has the "channel" key
+//
+// GUESS actions are handled as a special case to not update the
+// current players selected cell when another user makes a guess 
 const handleActionMiddleware = websocket => store => next => action => {
   if (!isValidWs(websocket)) {
     return next(action)
@@ -171,13 +173,23 @@ const getSelectCellPayload = selection => {
   }
 }
 
+const logger = store => next => action => {
+  console.group(action.type);
+  console.log('prev state', store.getState());
+  console.log('action', action);
+  let result = next(action);
+  console.log('next state', store.getState());
+  console.groupEnd();
+  return result;
+}
+
 const ws = connect()
 
 if (ws) {
   let mwares = [
     setGameIdMiddleware(ws),
     handleActionMiddleware(ws),
-    onmessageMiddleware(ws),
+    setDispatchMiddleware(ws),
     postActionMiddleware(ws),
   ]
 
