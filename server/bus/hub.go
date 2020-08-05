@@ -31,6 +31,7 @@ type HubMessage struct {
 
 type Channel struct {
 	clients cmap.ConcurrentMap //map[uuid.UUID]*Client
+	gameID  int
 	// register   chan *Client
 	// unregister chan *Client
 }
@@ -101,7 +102,7 @@ func (h *Hub) RegisterClient(client *Client) {
 	}
 
 	channel.clients.Set(client.ID.String(), client)
-	fmt.Printf("Registered %s to %s\n", client.ID, client.channelID)
+	fmt.Printf("Registered client %s to channel %s\n", client.ID, client.channelID)
 }
 
 // UnregisterClient ...
@@ -134,6 +135,29 @@ func (h *Hub) UnregisterClient(client *Client) {
 	}
 }
 
+func (h *Hub) SetGameIdForChannel(channelID uuid.UUID, gameID int) bool {
+	tmp, ok := h.channels.Get(channelID.String())
+	if !ok {
+		fmt.Printf("Couldnt set game id for channel: %s\n", channelID)
+		return false
+	}
+
+	channel, ok := tmp.(*Channel)
+	if !ok {
+		fmt.Printf("Couldnt cast channel with id %s to channel type to set game id\n", channelID)
+		return false
+	}
+
+	if channel.gameID != 0 && channel.gameID != gameID {
+		fmt.Printf("Game %d is already in session in channel %s. Can not set it to %d\n", channel.gameID, channelID, gameID)
+		return false
+	}
+
+	channel.gameID = gameID
+	fmt.Printf("Set channel %s to game id %d\n", channelID, gameID)
+	return true
+}
+
 // Broadcast ...
 func (h *Hub) Broadcast(message *HubMessage) {
 	from := message.client.ID.String()
@@ -151,17 +175,16 @@ func (h *Hub) Broadcast(message *HubMessage) {
 		return
 	}
 
-	fmt.Println("Broadcasting %s", message.action)
+	fmt.Printf("Broadcasting %s\n", message.action)
 	for to, _client := range channel.clients.Items() {
 		// send to everyone else in the channel
 		if to == from {
-			fmt.Println("Skipping myself")
 			continue
 		}
 
 		client, ok := _client.(*Client)
 		if !ok {
-			fmt.Println("Unknown client type (%T) to broadcast to... skipping", _client)
+			fmt.Printf("Unknown client type (%T) to broadcast to... skipping\n", _client)
 			continue
 		}
 

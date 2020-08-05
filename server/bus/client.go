@@ -2,7 +2,6 @@ package bus
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -66,10 +65,9 @@ func (c *Client) Register(id, channelID uuid.UUID, clientVersion string) {
 }
 
 func (c *Client) Unregister() {
-	// c.hub.unregister <- c
+	fmt.Println("Unregistering client", c.ID)
 	close(c.send)
 	c.conn.Close()
-	fmt.Println("unregistered client")
 }
 
 // ReadPump pumps messages from the websocket connection to the hub.
@@ -78,13 +76,16 @@ func (c *Client) Unregister() {
 // ensures that there is at most one reader on a connection by executing all
 // reads from this goroutine.
 func (c *Client) ReadPump() {
+	defer func() {
+		fmt.Println("Closing read pump for", c.ID)
+		c.Unregister()
+	}()
+
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
-			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				log.Printf("error: %v", err)
-			}
-			break
+			fmt.Printf("Error reading message from connection for client %s: %v\n", c.ID, err)
+			return
 		}
 
 		msg, err := actions.NewMessageFrom(message)
@@ -103,18 +104,12 @@ func (c *Client) ReadPump() {
 			c.Register(msg.From, msg.Channel, msg.ClientVersion)
 			continue
 
-			// case actions.Guess.String():
-			// 	guess, err := actions.NewGuessMessageFrom(message)
-			// case actions.ApplyProgress.String():
-			// 	_, err := actions.NewApplyProgessMessageFrom(message)
-			// 	if err != nil {
-			// 		fmt.Printf("Error parsing payload into ApplyProgressMessage struct: %+v\n%s\n\n", err, message)
-			// 		// continue
-			// 	}
-
-			// only explicitly let action types we care about pass through
-			// default:
-			// 	continue
+		case actions.SetGameId.String():
+			if ok := c.hub.SetGameIdForChannel(c.channelID, msg.GameId); !ok {
+				fmt.Println("Dropping client", c.ID)
+				return
+			}
+			continue
 		}
 
 		c.hub.broadcast <- &HubMessage{data: message, client: c, action: msg.Type}
@@ -129,6 +124,7 @@ func (c *Client) ReadPump() {
 func (c *Client) WritePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
+		fmt.Println("Closing write pump for", c.ID)
 		ticker.Stop()
 		c.hub.unregister <- c
 	}()
@@ -137,9 +133,9 @@ func (c *Client) WritePump() {
 		select {
 		case message, ok := <-c.send:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			// The hub closed the channel.
 			if !ok {
-				fmt.Printf("closing connection because msg error: %+v\n", message)
-				// The hub closed the channel.
+				fmt.Printf("client %s channel closed\n", c.ID)
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
