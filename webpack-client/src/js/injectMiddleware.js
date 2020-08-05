@@ -19,6 +19,8 @@ const getChannel = () => {
   return null
 }
 
+const isValidWs = websocket => websocket && websocket.readyState == 1
+
 const connect = () => {
   const channel = getChannel()
   if (!channel) {
@@ -67,7 +69,7 @@ const connect = () => {
 }
 
 const setGameIdMiddleware = websocket => store => next => action => {
-  if (!websocket || websocket.gameId) {
+  if (!isValidWs(websocket) || websocket.gameId) {
     return next(action)
   }
 
@@ -99,7 +101,7 @@ const setGameIdMiddleware = websocket => store => next => action => {
 }
 
 const postActionMiddleware = websocket => store => next => action => {
-  if (!websocket) {
+  if (isValidWs(websocket)) {
     return next(action)
   }
 
@@ -127,7 +129,7 @@ const logger = store => next => action => {
 }
 
 const onmessageMiddleware = websocket => store => next => action => {
-  if (websocket) {
+  if (isValidWs(websocket)) {
     websocket.store = store
   }
 
@@ -135,7 +137,7 @@ const onmessageMiddleware = websocket => store => next => action => {
 }
 
 const handleActionMiddleware = websocket => store => next => action => {
-  if (!websocket) {
+  if (!isValidWs(websocket)) {
     return next(action)
   }
 
