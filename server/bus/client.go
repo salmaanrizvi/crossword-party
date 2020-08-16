@@ -94,21 +94,22 @@ func (c *Client) ReadPump() {
 			continue
 		}
 
-		if actions.IsIgnoredAction(msg.Type) {
-			continue
-		}
-
 		switch msg.Type {
 		// register is a special case that we don't want to rebroadcast
-		case actions.Register.String():
+		case actions.Register:
 			c.Register(msg.From, msg.Channel, msg.ClientVersion)
 			continue
 
-		case actions.SetGameId.String():
-			if ok := c.hub.SetGameIdForChannel(c.channelID, msg.GameId); !ok {
+		case actions.SetGameID:
+			if ok := c.hub.SetGameIdForChannel(c.channelID, msg.GameID); !ok {
 				fmt.Println("Dropping client", c.ID)
 				return
 			}
+			continue
+		}
+
+		if actions.IsIgnoredAction(msg.Type) {
+			fmt.Println("Ignoring", msg.Type)
 			continue
 		}
 

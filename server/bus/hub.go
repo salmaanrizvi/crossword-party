@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/salmaanrizvi/crossword-party/server/actions"
+
 	"github.com/google/uuid"
 	cmap "github.com/orcaman/concurrent-map"
 )
@@ -26,7 +28,7 @@ type Hub struct {
 type HubMessage struct {
 	data   []byte
 	client *Client
-	action string
+	action actions.Action
 }
 
 type Channel struct {
