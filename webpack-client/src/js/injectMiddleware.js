@@ -111,7 +111,7 @@ const postActionMiddleware = websocket => store => next => action => {
   }
 
   // Check if action was sent to us from websocket
-  if (!action.channel && websocket.readyState == 1) {
+  if (!action.channel && isValidWs(websocket)) {
     action.from = websocket.from
     action.channel = websocket.channel
     action.clientVersion = websocket.clientVersion
