@@ -30,7 +30,7 @@ var Actions = map[Action]bool{
 	Clear:         false,
 	Unknown:       false,
 
-	// Actioans to ignore during rebroadcasting
+	// Actions to ignore during rebroadcasting
 	Register:        true,
 	SetGameID:       true,
 	SelectCell:      true,
