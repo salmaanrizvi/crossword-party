@@ -21,7 +21,7 @@ if (fileSystem.existsSync(secretsPath)) {
 var options = {
   mode: process.env.NODE_ENV || "development",
   entry: {
-    popup: path.join(__dirname, "src", "js", "popup.js"),
+    popup: path.join(__dirname, "src", "js", "popup", "index.js"),
     options: path.join(__dirname, "src", "js", "options.js"),
     background: path.join(__dirname, "src", "js", "background.js"),
     contentScript: path.join(__dirname, "src", "js", "contentScript.js"),
@@ -50,6 +50,19 @@ var options = {
         test: /\.html$/,
         loader: "html-loader",
         exclude: /node_modules/
+      },
+      {
+        test: /\.jsx?$/,
+        include: path.join(__dirname, 'src', 'js', 'popup'),
+        exclude: /node_modules/,
+        use: [
+          {
+            loader: 'babel-loader',
+            options: {
+              presets: ['react-app']
+            }
+          }
+        ],
       }
     ]
   },

@@ -1,0 +1,58 @@
+body {
+    margin: 0;
+}
+
+.app {
+    width: 300px;
+    min-height: 175px;
+    height: fit-content;
+}
+
+.header {
+    color: white;
+}
+
+.flex-center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.flex-end {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.flex-col {
+    display: flex;
+    flex-direction: column;
+}
+
+.space-evenly {
+    justify-content: space-evenly;
+}
+
+.fh {
+    height: 100%;
+}
+
+.fw {
+    width: 100%;
+    width: -moz-available;
+    width: -webkit-fill-available;
+    width: fill-available;
+}
+
+.cwp-share-subtitle {
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    line-height: 1.25 !important;
+}
+
+.margin-12 {
+    margin: 12px;
+}
+
+.margin-top-8 {
+    margin-top: 8px;
+}
