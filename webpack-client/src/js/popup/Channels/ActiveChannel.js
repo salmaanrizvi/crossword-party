@@ -28,6 +28,7 @@ export const ActiveChannel = () => {
     return null
   }
 
+  // TODO: actually get the right url
   const getUrl = () => {
     return `https://nytimes.com/crosswords/2020/8/10?cwp_channel=${state.channelId}`
   }

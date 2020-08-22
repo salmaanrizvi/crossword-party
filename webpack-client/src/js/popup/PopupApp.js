@@ -8,7 +8,6 @@ import Header from './Header'
 import Loader from './Loader'
 import { ActiveChannel, CreateChannel } from './Channels'
 
-
 const PopupApp = () => {
   const [state, dispatch] = useReducer(reducer, { channelId: '', loading: true })
   useLoadSettings(dispatch)

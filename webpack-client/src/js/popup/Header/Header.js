@@ -8,7 +8,7 @@ const Header = ({ loading }) => {
     <AppBar position={ loading ? "fixed" : "relative" }>
       <Toolbar variant="dense">
         <Typography variant="h6" className="header">
-          NYTimes Crossword Party
+          Crossword Party
         </Typography>
       </Toolbar>
     </AppBar>

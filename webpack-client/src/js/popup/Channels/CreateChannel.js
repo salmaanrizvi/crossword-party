@@ -17,10 +17,10 @@ export const CreateChannel = () => {
 
   return (
     <div className="flex-center flex-col fh fw margin-12">
-      <Typography variant="subtitle2" paragraph>
+      <Typography variant="body2" paragraph>
         Start a party below and enjoy playing a multiplayer version of the NYTimes crossword.
       </Typography>
-      <Button color="primary" variant="contained" onClick={handleClick}>
+      <Button color="primary" variant="contained" onClick={handleClick} classes={{ root: 'create-party-button' }}>
         Start a new party!
       </Button>
     </div>

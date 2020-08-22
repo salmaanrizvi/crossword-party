@@ -1,5 +1,6 @@
 body {
     margin: 0;
+    font-family: Roboto, 'Noto Sans JP', -apple-system, 'Segoe UI', Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif
 }
 
 .app {
@@ -10,6 +11,7 @@ body {
 
 .header {
     color: white;
+    font-family: 'Noto Sans JP' !important;
 }
 
 .flex-center {
@@ -43,16 +45,20 @@ body {
     width: fill-available;
 }
 
-.cwp-share-subtitle {
-    font-size: 14px !important;
-    font-weight: 500 !important;
-    line-height: 1.25 !important;
-}
-
 .margin-12 {
     margin: 12px;
 }
 
 .margin-top-8 {
     margin-top: 8px;
+}
+
+.cwp-share-subtitle {
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    line-height: 1.25 !important;
+}
+
+.create-party-button {
+    font-family: 'Noto Sans JP' !important
 }
