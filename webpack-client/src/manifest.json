@@ -3,11 +3,10 @@
   "version": "1.0.0",
   "description": "Play the NYT crossword together",
 
-  "options_page": "options.html",
   "background": {
     "page": "background.html"
   },
-  "browser_action": {
+  "page_action": {
     "default_popup": "popup.html",
     "default_icon": "icon-34.png"
   },
@@ -21,7 +20,7 @@
   ],
   "content_scripts": [
     {
-      "matches": ["https://nytimes.com/"],
+      "matches": ["https://www.nytimes.com/crosswords"],
       "js": ["contentScript.bundle.js"],
       "run_at": "document_start"
     }
