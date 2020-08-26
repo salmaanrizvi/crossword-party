@@ -20,7 +20,7 @@
   ],
   "content_scripts": [
     {
-      "matches": ["https://www.nytimes.com/crosswords"],
+      "matches": ["https://www.nytimes.com/crosswords/*"],
       "js": ["contentScript.bundle.js"],
       "run_at": "document_start"
     }
