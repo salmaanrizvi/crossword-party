@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { Button, Typography } from '@material-ui/core'
 
 import { ReducerContext, ACTIONS } from '../reducer'
+import Chrome from '../chrome'
 
 export const CreateChannel = () => {
   const { state, dispatch } = useContext(ReducerContext)
@@ -12,7 +13,12 @@ export const CreateChannel = () => {
   }
 
   const handleClick = () => {
-    dispatch({ type: ACTIONS.SetChannelId, channelId: uuidv4() })
+    const channelId = uuidv4()
+    const url = `${ state.url }?cwp_channel=${channelId}`
+
+    Chrome.updateTab(null, { url }).then(() => {
+      dispatch({ type: ACTIONS.SetChannelId, channelId, url })
+    })
   }
 
   return (

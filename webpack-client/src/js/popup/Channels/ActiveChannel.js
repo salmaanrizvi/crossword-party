@@ -1,4 +1,4 @@
-import React, { useContext } from 'react'
+import React, { useState, useContext, useEffect } from 'react'
 import { Avatar, Button, TextField, Typography, makeStyles } from '@material-ui/core'
 
 import { ReducerContext, ACTIONS } from '../reducer'
@@ -28,12 +28,11 @@ export const ActiveChannel = () => {
     return null
   }
 
-  // TODO: actually get the right url
-  const getUrl = () => {
-    return `https://nytimes.com/crosswords/2020/8/10?cwp_channel=${state.channelId}`
+  const handleSyncParty = () => {
+    Chrome.sendMessage({ type: 'SYNC_GAME' }).then(console.log)
   }
 
-  const handleClick = () => {
+  const handleEndParty = () => {
     dispatch({ type: ACTIONS.RemoveChannelId })
     Chrome.activeTab().then(tab => {
       const url = trimChannelId(tab.url)
@@ -43,7 +42,6 @@ export const ActiveChannel = () => {
     })
   }
 
-  const url = getUrl()
   return (
     <div className="fh fw flex-center flex-col space-evenly margin-12">
       <TextField
@@ -51,13 +49,13 @@ export const ActiveChannel = () => {
         fullWidth
         label="Party url"
         variant="outlined"
-        defaultValue={url}
+        value={state.url}
         inputProps={{ readOnly: true }}
         size="small"
         helperText="Share this URL with your friends to start the Crossword Party!"
       />
 
-      <div className="fw margin-top-8">
+      <div className="fw margin-tb-8">
         <Typography align="left" variant="body2">
           Connected friends
         </Typography>
@@ -66,11 +64,18 @@ export const ActiveChannel = () => {
         </div>
       </div>
 
-      <div className="fw flex-end">
+      <div className="fw flex space-between">
         <Button
           color="primary"
           variant="contained"
-          onClick={handleClick}
+          onClick={handleSyncParty}
+          size="small"
+        >          Sync Game
+        </Button>
+        <Button
+          color="default"
+          variant="contained"
+          onClick={handleEndParty}
           size="small"
         >
           End Party
