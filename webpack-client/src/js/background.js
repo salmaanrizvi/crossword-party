@@ -1,13 +1,13 @@
 import '../img/icon-128.png'
 import '../img/icon-34.png'
-import { TableSortLabel } from '@material-ui/core';
 
 var lastTabId = 0;
+const urlRegex = new RegExp('https:\/\/www\.nytimes\.com\/crosswords\/game\/.*')
 
-chrome.tabs.onSelectionChanged.addListener(function(tabId) {
+
+chrome.tabs.onActivated.addListener(({ tabId }) => {
   lastTabId = tabId;
-  console.log('tab changed to', tabId)
-  chrome.tabs.query({ url: 'https://www.nytimes.com/crosswords*'}, tabs => {
+  chrome.tabs.query({ url: 'https://www.nytimes.com/crosswords/game/*'}, tabs => {
     const currentTab = tabs.find(tab => tab.id === tabId)
     if (currentTab) {
       chrome.pageAction.show(lastTabId);
@@ -17,9 +17,21 @@ chrome.tabs.onSelectionChanged.addListener(function(tabId) {
   })
 });
 
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  if (urlRegex.test(tab.url)) {
+    chrome.pageAction.show(tab.id)
+  } else {
+    chrome.pageAction.hide(tab.id)
+  }
+})
+
 chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-  lastTabId = tabs[0].id;
-  if (tabs[0].url.indexOf('https://www.nytimes.com/crosswords') > -1) {
+  const tab = tabs[0]
+  lastTabId = tab.id
+
+  if (urlRegex.test(tab.url)) {
     chrome.pageAction.show(lastTabId);
+  } else {
+    chrome.pageAction.hide(lastTabId)
   }
 });
