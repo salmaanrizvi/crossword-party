@@ -17,4 +17,10 @@ Chrome.updateTab = (tabId, updateProperties) => new Promise(resolve => {
   chrome.tabs.update(tabId, updateProperties, resolve)
 })
 
+Chrome.sendMessage = msg => new Promise(resolve => {
+  Chrome.activeTab().then(tab => {
+    chrome.tabs.sendMessage(tab.id, msg, resolve)
+  })
+})
+
 export default Chrome
