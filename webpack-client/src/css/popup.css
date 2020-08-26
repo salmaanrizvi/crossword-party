@@ -14,6 +14,10 @@ body {
     font-family: 'Noto Sans JP' !important;
 }
 
+.flex {
+    display: flex;
+}
+
 .flex-center {
     display: flex;
     justify-content: center;
@@ -34,6 +38,10 @@ body {
     justify-content: space-evenly;
 }
 
+.space-between {
+    justify-content: space-between;
+}
+
 .fh {
     height: 100%;
 }
@@ -51,6 +59,11 @@ body {
 
 .margin-top-8 {
     margin-top: 8px;
+}
+
+.margin-tb-8 {
+    margin-top: 8px;
+    margin-bottom: 8px;
 }
 
 .cwp-share-subtitle {
