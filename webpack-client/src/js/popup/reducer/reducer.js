@@ -24,7 +24,7 @@ export const reducer = (state, action) => {
 
     case ACTIONS.SetChannelId: {
       Chrome.set({ channelId: action.channelId })
-      return Object.assign({}, state, { channelId: action.channelId })
+      return Object.assign({}, state, { channelId: action.channelId, url: action.url })
     }
     case ACTIONS.RemoveChannelId: {
       Chrome.set({ channelId: '' })

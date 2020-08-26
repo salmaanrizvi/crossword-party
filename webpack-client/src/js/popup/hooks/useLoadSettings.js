@@ -45,7 +45,7 @@ export const trimChannelId = url => {
 
 export const useLoadSettings = dispatch => {
   useEffect(() => {
-    dispatch(ACTIONS.LoadSettings)
+    dispatch({ type: ACTIONS.LoadSettings })
     const getData = async () => {
       let tab = {}
       let data = {}
@@ -56,6 +56,7 @@ export const useLoadSettings = dispatch => {
         // fall through
       }
       
+      data.url = tab.url
       // Prefer channel id from url
       const channelId = getChannelId(tab.url)
       if (channelId) {
