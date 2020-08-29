@@ -11,10 +11,13 @@ import (
 )
 
 const (
+	// Development is the string for the server running in development
 	Development string = "dev"
-	Production         = "prod"
+	// Production is the string for the server running in production
+	Production = "prod"
 )
 
+// Config is the servers dynamic configuration
 type Config struct {
 	AppVersion *semver.Version
 	Env        string
@@ -39,12 +42,13 @@ func init() {
 	filename := fmt.Sprintf(".%s.env", env)
 	godotenv.Load(filename)
 	serverConfig = new()
+	fmt.Printf("Loaded config \n%+v\n", serverConfig)
 }
 
 func new() *Config {
 	appVersionStr := getEnv("APP_VERSION", "1.0.0", false)
 	appVersion := semver.MustParse(appVersionStr)
-	supportedClients := GetSupportedClients(appVersion)
+	supportedClient := GetSupportedClient(appVersion)
 
 	return &Config{
 		// Non-required configs
@@ -57,18 +61,23 @@ func new() *Config {
 		KeyFile:          getEnv("KEY_FILE", "", false),
 
 		// Required configs
-		SupportedClient: supportedClients,
+		SupportedClient: supportedClient,
 	}
 }
 
+// Get returns the singleton Config instance for the server
 func Get() *Config {
 	return serverConfig
 }
 
+// RunTLS checks if the configuration was loaded with a CertFile and KeyFile for
+// running the server in TLS mode. This is useful in local dev mode
 func (c *Config) RunTLS() bool {
 	return c.CertFile != "" && c.KeyFile != ""
 }
 
+// IsValidClient validates whether clientVerStr is a client version
+// that this server accepts
 func (c *Config) IsValidClient(clientVerStr string) bool {
 	clientVersion, err := semver.NewVersion(clientVerStr)
 	if err != nil {

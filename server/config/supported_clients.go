@@ -11,6 +11,8 @@ type SupportedClient struct {
 	Constraints   *semver.Constraints
 }
 
+// When bumping the server version, ensure that it is either backwards
+// compatible or it is properly reflected here in which client versions it supports
 func buildSupportedClientList() []*SupportedClient {
 	return []*SupportedClient{
 		{
@@ -20,7 +22,7 @@ func buildSupportedClientList() []*SupportedClient {
 	}
 }
 
-func GetSupportedClients(version *semver.Version) *SupportedClient {
+func GetSupportedClient(version *semver.Version) *SupportedClient {
 	scList := buildSupportedClientList()
 
 	for _, sc := range scList {
