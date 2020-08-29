@@ -1,6 +1,7 @@
 package bus
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -106,6 +107,23 @@ func (c *Client) ReadPump() {
 				return
 			}
 			continue
+
+		case actions.ApplyProgress:
+			apMsg, err := c.hub.ApplyProgressToChannel(msg.Payload, c.channelID)
+			if err != nil {
+				fmt.Printf("Error applying progress to channel %+v\n", err)
+				continue
+			}
+
+			data, err := json.Marshal(&apMsg)
+			if err != nil {
+				fmt.Printf("Error marshalling latest message into byte array %+v\n", err)
+				continue
+			}
+
+			raw := json.RawMessage(data)
+			msg.Payload = &raw
+			fmt.Printf("Updated apply progress message -- %+v\n %+v\n", msg, apMsg)
 		}
 
 		if actions.IsIgnoredAction(msg.Type) {
@@ -113,7 +131,7 @@ func (c *Client) ReadPump() {
 			continue
 		}
 
-		c.hub.broadcast <- &HubMessage{data: message, client: c, action: msg.Type}
+		c.hub.broadcast <- &HubMessage{data: message, client: c, action: msg.Type, sendAll: msg.Type == actions.ApplyProgress}
 	}
 }
 

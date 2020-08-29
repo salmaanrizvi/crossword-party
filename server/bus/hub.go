@@ -1,6 +1,7 @@
 package bus
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -26,14 +27,16 @@ type Hub struct {
 }
 
 type HubMessage struct {
-	data   []byte
-	client *Client
-	action actions.Action
+	data    []byte
+	client  *Client
+	action  actions.Action
+	sendAll bool
 }
 
 type Channel struct {
-	clients cmap.ConcurrentMap //map[uuid.UUID]*Client
-	gameID  int
+	clients  cmap.ConcurrentMap //map[uuid.UUID]*Client
+	gameID   int
+	Progress *actions.ApplyProgressMessage
 	// register   chan *Client
 	// unregister chan *Client
 }
@@ -140,7 +143,7 @@ func (h *Hub) UnregisterClient(client *Client) {
 func (h *Hub) SetGameIdForChannel(channelID uuid.UUID, gameID int) bool {
 	tmp, ok := h.channels.Get(channelID.String())
 	if !ok {
-		fmt.Printf("Couldnt set game id for channel: %s\n", channelID)
+		fmt.Printf("Channel %s not found to set game id\n", channelID)
 		return false
 	}
 
@@ -158,6 +161,36 @@ func (h *Hub) SetGameIdForChannel(channelID uuid.UUID, gameID int) bool {
 	channel.gameID = gameID
 	fmt.Printf("Set channel %s to game id %d\n", channelID, gameID)
 	return true
+}
+
+func (h *Hub) ApplyProgressToChannel(payload *json.RawMessage, channelID uuid.UUID) (*actions.ApplyProgressMessage, error) {
+	currentMsg, err := actions.NewApplyProgressMessageFrom(payload)
+
+	if err != nil {
+		fmt.Printf("Could not parse apply message from payload %+v\n", err)
+		return nil, err
+	}
+
+	tmp, ok := h.channels.Get(channelID.String())
+	if !ok {
+		fmt.Printf("Channel %s not found to set apply progress to\n", channelID)
+		return currentMsg, nil
+	}
+
+	channel, ok := tmp.(*Channel)
+	if !ok {
+		fmt.Printf("Couldnt cast channel with id %s to channel type to apply prgoress to\n", channelID)
+		return currentMsg, nil
+	}
+
+	latestMsg := actions.GetLatestProgress(channel.Progress, currentMsg)
+	if currentMsg == latestMsg {
+		fmt.Println("New message was more recent than saved prgoress on channel")
+	} else if latestMsg == channel.Progress {
+		fmt.Println("Current channel progress was more up to date")
+	}
+	channel.Progress = latestMsg
+	return latestMsg, nil
 }
 
 // Broadcast ...
@@ -180,7 +213,7 @@ func (h *Hub) Broadcast(message *HubMessage) {
 	fmt.Printf("Broadcasting %s\n", message.action)
 	for to, _client := range channel.clients.Items() {
 		// send to everyone else in the channel
-		if to == from {
+		if to == from && !message.sendAll {
 			continue
 		}
 
