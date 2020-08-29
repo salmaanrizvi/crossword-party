@@ -13,7 +13,7 @@ type SupportedClient struct {
 
 func buildSupportedClientList() []*SupportedClient {
 	return []*SupportedClient{
-		&SupportedClient{
+		{
 			ServerVersion: semver.MustParse("1.0.0"),
 			Constraints:   mustParseNewConstraint("^1.0.0"),
 		},
