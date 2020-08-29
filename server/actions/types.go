@@ -60,6 +60,8 @@ var actionStrings = []string{
 	"UNKNOWN",
 }
 
+// IsIgnoredAction returns whether a specified action should be
+// rebroadcast to all connected clients in a channel or not
 func IsIgnoredAction(action Action) bool {
 	return Actions[action]
 }
