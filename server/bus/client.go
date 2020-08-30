@@ -1,7 +1,6 @@
 package bus
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -50,13 +49,18 @@ func NewClient(hub *Hub, conn *websocket.Conn) *Client {
 
 func (c *Client) Register(id, channelID uuid.UUID, clientVersion string) {
 	if id == uuid.Nil || channelID == uuid.Nil {
-		// TODO: log error here
+		config.Logger().Debugf(
+			"Rejecting client",
+			"client_id", id,
+			"channel_id", channelID,
+			"client_version", clientVersion,
+			"reason", "Nil client or channel id provided",
+		)
 		return
 	}
 
 	if !config.Get().IsValidClient(clientVersion) {
-		fmt.Println("Rejecting client", id)
-		c.Unregister()
+		c.Unregister(fmt.Errorf("Client %s had unsupported version %s", id, clientVersion))
 		return
 	}
 
@@ -65,8 +69,13 @@ func (c *Client) Register(id, channelID uuid.UUID, clientVersion string) {
 	c.hub.register <- c
 }
 
-func (c *Client) Unregister() {
-	fmt.Println("Unregistering client", c.ID)
+func (c *Client) Unregister(e error) {
+	config.Logger().Infow(
+		"Unregistering client",
+		"client_id", c.ID,
+		"channel_id", c.channelID,
+		"reason", e.Error(),
+	)
 	close(c.send)
 	c.conn.Close()
 }
@@ -77,21 +86,22 @@ func (c *Client) Unregister() {
 // ensures that there is at most one reader on a connection by executing all
 // reads from this goroutine.
 func (c *Client) ReadPump() {
+	var e error
 	defer func() {
-		fmt.Println("Closing read pump for", c.ID)
-		c.Unregister()
+		// config.Logger().Debugw("Closing read pump for", "client_id", c.ID)
+		c.Unregister(e)
 	}()
 
 	for {
 		_, message, err := c.conn.ReadMessage()
 		if err != nil {
-			fmt.Printf("Error reading message from connection for client %s: %v\n", c.ID, err)
+			e = fmt.Errorf("Error reading message from connection: %s", err.Error())
 			return
 		}
 
 		msg, err := actions.NewMessageFrom(message)
 		if err != nil {
-			fmt.Printf("Error parsing message into Message struct: %+v\n%s\n\n", err, message)
+			config.Logger().Errorw("Error parsing message into struct: %s \n\n%s", err.Error(), message)
 			continue
 		}
 
@@ -102,32 +112,31 @@ func (c *Client) ReadPump() {
 			continue
 
 		case actions.SetGameID:
-			if ok := c.hub.SetGameIdForChannel(c.channelID, msg.GameID); !ok {
-				fmt.Println("Dropping client", c.ID)
+			if e = c.hub.SetGameIdForChannel(c.channelID, msg.GameID); e != nil {
 				return
 			}
+
+			config.Logger().Infow(
+				"Set game id for channel",
+				"game_id", msg.GameID,
+				"channel_id", c.channelID,
+				"client_id", c.ID,
+			)
 			continue
 
 		case actions.ApplyProgress:
 			apMsg, err := c.hub.ApplyProgressToChannel(msg.Payload, c.channelID)
 			if err != nil {
-				fmt.Printf("Error applying progress to channel %+v\n", err)
+				config.Logger().Errorw("Error applying progress from client %s to channel %s: %s", c.ID, c.channelID, err.Error())
 				continue
 			}
 
-			data, err := json.Marshal(&apMsg)
-			if err != nil {
-				fmt.Printf("Error marshalling latest message into byte array %+v\n", err)
-				continue
-			}
-
-			raw := json.RawMessage(data)
-			msg.Payload = &raw
-			fmt.Printf("Updated apply progress message -- %+v\n %+v\n", msg, apMsg)
+			msg.Payload = apMsg
+			config.Logger().Debugw("Updated apply progress message", "channel_id", c.channelID)
 		}
 
 		if actions.IsIgnoredAction(msg.Type) {
-			fmt.Println("Ignoring", msg.Type)
+			config.Logger().Debugw("Ignoring message", "type", msg.Type)
 			continue
 		}
 
@@ -143,7 +152,6 @@ func (c *Client) ReadPump() {
 func (c *Client) WritePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
-		fmt.Println("Closing write pump for", c.ID)
 		ticker.Stop()
 		c.hub.unregister <- c
 	}()
@@ -154,7 +162,6 @@ func (c *Client) WritePump() {
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			// The hub closed the channel.
 			if !ok {
-				fmt.Printf("client %s channel closed\n", c.ID)
 				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}

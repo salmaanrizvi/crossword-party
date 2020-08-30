@@ -16,14 +16,13 @@ func main() {
 	defer config.Logger().Sync()
 
 	if conf.Env == config.Production {
-		fmt.Println("here")
 		gin.SetMode(gin.ReleaseMode)
 	}
 
 	router := gin.New()
 	router.Use(
 		config.GetGinLoggerMiddleware(config.Logger()),
-		config.GetRecoveryLoggerMiddleware(config.Logger(), true),
+		// config.GetRecoveryLoggerMiddleware(config.Logger(), true),
 	)
 
 	hub := bus.NewHub()
@@ -63,7 +62,7 @@ var wsupgrader = websocket.Upgrader{
 func wshandler(hub *bus.Hub, w http.ResponseWriter, r *http.Request) {
 	conn, err := wsupgrader.Upgrade(w, r, nil)
 	if err != nil {
-		fmt.Printf("Failed to set websocket upgrade: %+v\n", err)
+		config.Logger().Errorf("Failed to set websocket upgrade %s", err.Error())
 		return
 	}
 

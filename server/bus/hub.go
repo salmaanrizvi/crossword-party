@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/salmaanrizvi/crossword-party/server/actions"
+	"github.com/salmaanrizvi/crossword-party/server/config"
 
 	"github.com/google/uuid"
 	cmap "github.com/orcaman/concurrent-map"
@@ -81,14 +82,35 @@ func (h *Hub) Stats(timeInSeconds int) {
 	}
 }
 
+func (h *Hub) GetChannel(channelID uuid.UUID) (*Channel, error) {
+	tmp, ok := h.channels.Get(channelID.String())
+	if !ok {
+		return nil, fmt.Errorf("Channel %s not found in list of channels", channelID)
+	}
+
+	channel, ok := tmp.(*Channel)
+	if !ok {
+		// TODO - clean up this in our map
+		return nil, fmt.Errorf("Channel %s is not of type *Channel, instead %T", channelID, tmp)
+	}
+
+	return channel, nil
+}
+
 func (h *Hub) printStats() {
-	fmt.Println(time.Now())
-	fmt.Printf("Channels Count: %d\n", h.channels.Count())
+	totalClients := 0
+
+	log := config.Logger().With(
+		"channels", h.channels.Count(),
+	)
 	for channelID, val := range h.channels.Items() {
 		if channel, ok := val.(*Channel); ok {
-			fmt.Printf("Channel %s: %d connected clients\n", channelID, channel.clients.Count())
+			log = log.With(channelID, channel.clients.Count())
+			totalClients += channel.clients.Count()
 		}
 	}
+
+	log.Infow("Server Stats", "clients", totalClients)
 }
 
 // RegisterClient ...
@@ -107,26 +129,23 @@ func (h *Hub) RegisterClient(client *Client) {
 	}
 
 	channel.clients.Set(client.ID.String(), client)
-	fmt.Printf("Registered client %s to channel %s\n", client.ID, client.channelID)
+	config.Logger().Infow(
+		"Registered client to channel",
+		"client_id", client.ID,
+		"channel_id", client.channelID,
+	)
 }
 
 // UnregisterClient ...
 func (h *Hub) UnregisterClient(client *Client) {
 	if client.channelID == uuid.Nil {
-		fmt.Printf("Cant unregister client (%s) from nil channel uuid\n", client.ID)
+		config.Logger().DPanicw("Cant unregister client from nil channel id", "client_id", client.ID)
 		return
 	}
 
-	tmp, ok := h.channels.Get(client.channelID.String())
-	if !ok {
-		fmt.Printf("Couldnt find channel %s to unregister client from\n", client.channelID)
-		return
-	}
-
-	channel, ok := tmp.(*Channel)
-	if !ok {
-		// TODO - clean up this in our map
-		fmt.Printf("Found non-channel reference in map, we should clean this up...")
+	channel, err := h.GetChannel(client.channelID)
+	if err != nil {
+		config.Logger().Warnw("Could not find channel to unregister client from", "client_id", client.ID, "channel_id", client.channelID, "reason", err.Error())
 		return
 	}
 
@@ -136,61 +155,60 @@ func (h *Hub) UnregisterClient(client *Client) {
 	// optionally, remove channel from hub if it has no clients left
 	if channel.clients.Count() == 0 {
 		h.channels.Remove(client.channelID.String())
-		fmt.Printf("Channel %s is empty - removing\n", client.channelID)
+		config.Logger().Debugw("Removing empty channel", "channel_id", client.channelID)
 	}
 }
 
-func (h *Hub) SetGameIdForChannel(channelID uuid.UUID, gameID int) bool {
-	tmp, ok := h.channels.Get(channelID.String())
-	if !ok {
-		fmt.Printf("Channel %s not found to set game id\n", channelID)
-		return false
-	}
-
-	channel, ok := tmp.(*Channel)
-	if !ok {
-		fmt.Printf("Couldnt cast channel with id %s to channel type to set game id\n", channelID)
-		return false
+func (h *Hub) SetGameIdForChannel(channelID uuid.UUID, gameID int) error {
+	channel, err := h.GetChannel(channelID)
+	if err != nil {
+		return fmt.Errorf("Channel %s not found to set game id", channelID)
 	}
 
 	if channel.gameID != 0 && channel.gameID != gameID {
-		fmt.Printf("Game %d is already in session in channel %s. Can not set it to %d\n", channel.gameID, channelID, gameID)
-		return false
+		return fmt.Errorf("Channel %s is already set to game %d, can not overwrite it to %d", channelID, channel.gameID, gameID)
 	}
 
 	channel.gameID = gameID
-	fmt.Printf("Set channel %s to game id %d\n", channelID, gameID)
-	return true
+	return nil
 }
 
-func (h *Hub) ApplyProgressToChannel(payload *json.RawMessage, channelID uuid.UUID) (*actions.ApplyProgressMessage, error) {
+func (h *Hub) ApplyProgressToChannel(payload *json.RawMessage, channelID uuid.UUID) (*json.RawMessage, error) {
 	currentMsg, err := actions.NewApplyProgressMessageFrom(payload)
 
 	if err != nil {
-		fmt.Printf("Could not parse apply message from payload %+v\n", err)
-		return nil, err
+		return nil, fmt.Errorf("Could not parse apply message from payload to channel %s: %s", channelID, err)
 	}
 
 	tmp, ok := h.channels.Get(channelID.String())
 	if !ok {
-		fmt.Printf("Channel %s not found to set apply progress to\n", channelID)
-		return currentMsg, nil
+		config.Logger().Errorw("Channel not found to set apply progress to. Using request payload", "channel_id", channelID)
+		return payload, nil
 	}
 
 	channel, ok := tmp.(*Channel)
 	if !ok {
-		fmt.Printf("Couldnt cast channel with id %s to channel type to apply prgoress to\n", channelID)
-		return currentMsg, nil
+		config.Logger().Warnw("Couldnt cast to channel type to apply progress to. Using request payload", "channel_id", channelID)
+		return payload, nil
 	}
 
 	latestMsg := actions.GetLatestProgress(channel.Progress, currentMsg)
 	if currentMsg == latestMsg {
-		fmt.Println("New message was more recent than saved prgoress on channel")
+		config.Logger().Debug("New message was more recent than saved prgoress on channel")
 	} else if latestMsg == channel.Progress {
-		fmt.Println("Current channel progress was more up to date")
+		config.Logger().Debug("Current channel progress was more up to date")
 	}
+
 	channel.Progress = latestMsg
-	return latestMsg, nil
+
+	data, err := json.Marshal(&channel.Progress)
+	if err != nil {
+		config.Logger().Errorw("Error marshalling apply progress message", "channel_id", channelID, "error", err.Error())
+		return payload, nil
+	}
+
+	raw := json.RawMessage(data)
+	return &raw, nil
 }
 
 // Broadcast ...
@@ -200,17 +218,17 @@ func (h *Hub) Broadcast(message *HubMessage) {
 
 	tmp, ok := h.channels.Get(channelID)
 	if !ok {
-		fmt.Printf("Couldnt find channel %s to broadcast message to\n", channelID)
+		config.Logger().Debugw("Could not find channel to broadcast message to", "channel_id", channelID)
 		return
 	}
 
 	channel, ok := tmp.(*Channel)
 	if !ok {
-		fmt.Printf("Channel was not of type *Channel -- actually was %T", tmp)
+		config.Logger().Debugw("Channel was not of type *Channel -- actually was %T", tmp)
 		return
 	}
 
-	fmt.Printf("Broadcasting %s\n", message.action)
+	config.Logger().Debugw("Broadcasting message", "action", message.action)
 	for to, _client := range channel.clients.Items() {
 		// send to everyone else in the channel
 		if to == from && !message.sendAll {
@@ -219,7 +237,7 @@ func (h *Hub) Broadcast(message *HubMessage) {
 
 		client, ok := _client.(*Client)
 		if !ok {
-			fmt.Printf("Unknown client type (%T) to broadcast to... skipping\n", _client)
+			config.Logger().Warnf("Unknown client to broadcast to, skipping", "type", fmt.Sprintf("%T", _client), "client_id", to)
 			continue
 		}
 
@@ -229,6 +247,6 @@ func (h *Hub) Broadcast(message *HubMessage) {
 			h.UnregisterClient(client)
 		}
 
-		fmt.Printf("Sent to %s in channel\n", to)
+		config.Logger().Infow("Sent message to client", "client_id", to)
 	}
 }
