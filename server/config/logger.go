@@ -18,7 +18,7 @@ import (
 var logger *zap.SugaredLogger
 
 // ConfigureLogger initializes and returns a logging client
-func ConfigureLogger(cfg *Config) *zap.SugaredLogger {
+func ConfigureLogger(cfg *Config) *zap.Config {
 	var zapCfg zap.Config
 	if cfg.Env == Production {
 		zapCfg = zap.NewProductionConfig()
@@ -31,11 +31,12 @@ func ConfigureLogger(cfg *Config) *zap.SugaredLogger {
 	err := zapCfg.Level.UnmarshalText([]byte(cfg.LogLevel))
 	if err != nil {
 		fmt.Println("Error setting log level", err)
+		zapCfg.Level.SetLevel(zapcore.InfoLevel)
 	}
 
 	l, _ := zapCfg.Build()
 	logger = l.Sugar().Named(fmt.Sprintf("%s-%s", "crossword-party", cfg.AppVersion))
-	return Logger()
+	return &zapCfg
 }
 
 // Logger is the only acceptable way to access the logger

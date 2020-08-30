@@ -64,12 +64,19 @@ func new() *Config {
 		SupportedClient: supportedClient,
 	}
 
-	ConfigureLogger(cfg)
+	loggerConfig := ConfigureLogger(cfg)
+
+	protocol := "http"
+	if cfg.RunTLS() {
+		protocol = "https"
+	}
 
 	Logger().Infow("App Config",
 		"environment", cfg.Env,
 		"port", cfg.Port,
 		"supported clients", cfg.SupportedClient.clientVersion,
+		"protocol", protocol,
+		"log_level", loggerConfig.Level,
 	)
 
 	return cfg
