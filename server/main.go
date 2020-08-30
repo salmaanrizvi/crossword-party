@@ -6,25 +6,32 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+
 	"github.com/salmaanrizvi/crossword-party/server/bus"
 	"github.com/salmaanrizvi/crossword-party/server/config"
 )
 
-/**
-main.go
-*/
-
 func main() {
 	conf := config.Get()
+	defer config.Logger().Sync()
 
-	router := gin.Default()
+	if conf.Env == config.Production {
+		fmt.Println("here")
+		gin.SetMode(gin.ReleaseMode)
+	}
+
+	router := gin.New()
+	router.Use(
+		config.GetGinLoggerMiddleware(config.Logger()),
+		config.GetRecoveryLoggerMiddleware(config.Logger(), true),
+	)
 
 	hub := bus.NewHub()
 	go hub.Run()
 	go hub.Stats(conf.LogStatsInterval)
 
 	router.GET("/", func(c *gin.Context) {
-		c.String(200, "Oyy, Izma")
+		c.String(200, fmt.Sprintf("Crossword Party %s", conf.AppVersion))
 	})
 
 	router.GET("/ws", func(c *gin.Context) {

@@ -42,18 +42,18 @@ func init() {
 	filename := fmt.Sprintf(".%s.env", env)
 	godotenv.Load(filename)
 	serverConfig = new()
-	fmt.Printf("Loaded config \n%+v\n", serverConfig)
 }
 
 func new() *Config {
+	env := getEnv("ENVIRONMENT", Development, false)
 	appVersionStr := getEnv("APP_VERSION", "1.0.0", false)
 	appVersion := semver.MustParse(appVersionStr)
 	supportedClient := GetSupportedClient(appVersion)
 
-	return &Config{
+	cfg := &Config{
 		// Non-required configs
 		AppVersion:       appVersion,
-		Env:              getEnv("ENVIRONMENT", Development, false),
+		Env:              env,
 		Port:             getEnvAsInt("PORT", 8000, false),
 		LogLevel:         getEnv("LOG_LEVEL", "debug", false),
 		LogStatsInterval: getEnvAsInt("LOG_STATS_INTERVAL", 300, false),
@@ -63,6 +63,16 @@ func new() *Config {
 		// Required configs
 		SupportedClient: supportedClient,
 	}
+
+	ConfigureLogger(cfg)
+
+	Logger().Infow("App Config",
+		"environment", cfg.Env,
+		"port", cfg.Port,
+		"supported clients", cfg.SupportedClient.clientVersion,
+	)
+
+	return cfg
 }
 
 // Get returns the singleton Config instance for the server

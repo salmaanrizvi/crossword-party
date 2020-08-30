@@ -9,6 +9,7 @@ import (
 type SupportedClient struct {
 	ServerVersion *semver.Version
 	Constraints   *semver.Constraints
+	clientVersion string
 }
 
 // When bumping the server version, ensure that it is either backwards
@@ -17,6 +18,7 @@ func buildSupportedClientList() []*SupportedClient {
 	return []*SupportedClient{
 		{
 			ServerVersion: semver.MustParse("1.0.0"),
+			clientVersion: "^1.0.0",
 			Constraints:   mustParseNewConstraint("^1.0.0"),
 		},
 	}
