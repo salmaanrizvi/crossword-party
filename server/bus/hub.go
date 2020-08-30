@@ -228,7 +228,7 @@ func (h *Hub) Broadcast(message *HubMessage) {
 		return
 	}
 
-	config.Logger().Debugw("Broadcasting message", "action", message.action)
+	config.Logger().Debugw("Broadcasting message", "type", message.action)
 	for to, _client := range channel.clients.Items() {
 		// send to everyone else in the channel
 		if to == from && !message.sendAll {
@@ -247,6 +247,6 @@ func (h *Hub) Broadcast(message *HubMessage) {
 			h.UnregisterClient(client)
 		}
 
-		config.Logger().Infow("Sent message to client", "client_id", to)
+		config.Logger().Infow("Sent message to client", "client_id", to, "type", message.action)
 	}
 }

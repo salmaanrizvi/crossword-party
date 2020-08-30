@@ -73,10 +73,10 @@ func new() *Config {
 
 	Logger().Infow("App Config",
 		"environment", cfg.Env,
-		"port", cfg.Port,
-		"supported clients", cfg.SupportedClient.clientVersion,
 		"protocol", protocol,
+		"port", cfg.Port,
 		"log_level", loggerConfig.Level,
+		"supported clients", cfg.SupportedClient.clientVersion,
 	)
 
 	return cfg
