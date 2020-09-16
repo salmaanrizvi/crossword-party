@@ -93,15 +93,15 @@ func (c *Client) ReadPump() {
 	}()
 
 	for {
-		_, message, err := c.conn.ReadMessage()
+		_, rawMessage, err := c.conn.ReadMessage()
 		if err != nil {
 			e = fmt.Errorf("Error reading message from connection: %s", err.Error())
 			return
 		}
 
-		msg, err := actions.NewMessageFrom(message)
+		msg, err := actions.NewMessageFrom(rawMessage)
 		if err != nil {
-			config.Logger().Errorw("Error parsing message into struct: %s \n\n%s", err.Error(), message)
+			config.Logger().Errorw("Error parsing message into struct: %s \n\n%s", err.Error(), rawMessage)
 			continue
 		}
 
@@ -124,14 +124,21 @@ func (c *Client) ReadPump() {
 			)
 			continue
 
+		case actions.PageMounted:
+			if channel, err := c.hub.GetChannel(c.channelID); err == nil {
+				if channel.CurrentProgress != nil {
+					config.Logger().Debugf("Page mounted -- sending apply progress instead")
+					msg = channel.CurrentProgress
+				}
+			}
+
 		case actions.ApplyProgress:
-			apMsg, err := c.hub.ApplyProgressToChannel(msg.Payload, c.channelID)
+			msg, err = c.hub.ApplyProgressToChannel(msg, c.channelID)
 			if err != nil {
 				config.Logger().Errorw("Error applying progress from client %s to channel %s: %s", c.ID, c.channelID, err.Error())
 				continue
 			}
 
-			msg.Payload = apMsg
 			config.Logger().Debugw("Updated apply progress message", "channel_id", c.channelID)
 		}
 
@@ -140,7 +147,7 @@ func (c *Client) ReadPump() {
 			continue
 		}
 
-		c.hub.broadcast <- &HubMessage{data: message, client: c, action: msg.Type, sendAll: msg.Type == actions.ApplyProgress}
+		c.hub.broadcast <- &HubMessage{data: msg, client: c, sendAll: msg.Type == actions.ApplyProgress}
 	}
 }
 

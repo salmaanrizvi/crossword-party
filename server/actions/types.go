@@ -17,6 +17,7 @@ const (
 	ToggleHelpMenu         = "TOGGLE_HELP_MENU"
 	EnterRebusMode         = "ENTER_REBUS_MODE"
 	ExitRebusMode          = "EXIT_REBUS_MODE"
+	PageMounted            = "PAGE_MOUNTED"
 	Unknown                = "UNKNOWN"
 )
 
@@ -40,6 +41,7 @@ var Actions = map[Action]bool{
 	ToggleHelpMenu:  true,
 	EnterRebusMode:  true,
 	ExitRebusMode:   true,
+	PageMounted:     true,
 }
 
 var actionStrings = []string{
@@ -57,6 +59,7 @@ var actionStrings = []string{
 	"TOGGLE_HELP_MENU",
 	"ENTER_REBUS_MODE",
 	"EXIT_REBUS_MODE",
+	"PAGE_MOUNTED",
 	"UNKNOWN",
 }
 

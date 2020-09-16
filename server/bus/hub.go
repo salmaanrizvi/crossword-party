@@ -28,16 +28,15 @@ type Hub struct {
 }
 
 type HubMessage struct {
-	data    []byte
+	data    *actions.Message
 	client  *Client
-	action  actions.Action
 	sendAll bool
 }
 
 type Channel struct {
-	clients  cmap.ConcurrentMap //map[uuid.UUID]*Client
-	gameID   int
-	Progress *actions.ApplyProgressMessage
+	clients         cmap.ConcurrentMap //map[uuid.UUID]*Client
+	gameID          int
+	CurrentProgress *actions.Message
 	// register   chan *Client
 	// unregister chan *Client
 }
@@ -173,42 +172,46 @@ func (h *Hub) SetGameIdForChannel(channelID uuid.UUID, gameID int) error {
 	return nil
 }
 
-func (h *Hub) ApplyProgressToChannel(payload *json.RawMessage, channelID uuid.UUID) (*json.RawMessage, error) {
-	currentMsg, err := actions.NewApplyProgressMessageFrom(payload)
+func (h *Hub) ApplyProgressToChannel(message *actions.Message, channelID uuid.UUID) (*actions.Message, error) {
+	channel, err := h.GetChannel(channelID)
+	if err != nil {
+		config.Logger().Errorw("Error getting channel. Using request payload", "channel_id", channelID, "reason", err)
+		return message, nil
+	}
 
+	if channel.CurrentProgress == nil {
+		channel.CurrentProgress = message
+		return message, nil
+	}
+
+	currentMsg, err := actions.NewApplyProgressMessageFrom(channel.CurrentProgress.Payload)
+	if err != nil {
+		channel.CurrentProgress = message
+		return message, nil
+	}
+
+	config.Logger().Debugf("Incoming AP Messsage: %s", message.Payload)
+	incomingMsg, err := actions.NewApplyProgressMessageFrom(message.Payload)
 	if err != nil {
 		return nil, fmt.Errorf("Could not parse apply message from payload to channel %s: %s", channelID, err)
 	}
 
-	tmp, ok := h.channels.Get(channelID.String())
-	if !ok {
-		config.Logger().Errorw("Channel not found to set apply progress to. Using request payload", "channel_id", channelID)
-		return payload, nil
-	}
-
-	channel, ok := tmp.(*Channel)
-	if !ok {
-		config.Logger().Warnw("Couldnt cast to channel type to apply progress to. Using request payload", "channel_id", channelID)
-		return payload, nil
-	}
-
-	latestMsg := actions.GetLatestProgress(channel.Progress, currentMsg)
-	if currentMsg == latestMsg {
+	latestMsg := actions.GetLatestProgress(currentMsg, incomingMsg)
+	if latestMsg == nil {
+		config.Logger().DPanic("Both current and incoming apply progress messages were nil. This should not occur")
+		return message, nil
+	} else if incomingMsg == latestMsg {
 		config.Logger().Debug("New message was more recent than saved prgoress on channel")
-	} else if latestMsg == channel.Progress {
+	} else {
 		config.Logger().Debug("Current channel progress was more up to date")
 	}
 
-	channel.Progress = latestMsg
+	payload := latestMsg.RawMessage()
 
-	data, err := json.Marshal(&channel.Progress)
-	if err != nil {
-		config.Logger().Errorw("Error marshalling apply progress message", "channel_id", channelID, "error", err.Error())
-		return payload, nil
-	}
+	message.Payload = json.RawMessage(payload)
+	channel.CurrentProgress = message
 
-	raw := json.RawMessage(data)
-	return &raw, nil
+	return channel.CurrentProgress, nil
 }
 
 // Broadcast ...
@@ -228,7 +231,10 @@ func (h *Hub) Broadcast(message *HubMessage) {
 		return
 	}
 
-	config.Logger().Debugw("Broadcasting message", "type", message.action)
+	// lazily reparse message
+	var data []byte
+
+	config.Logger().Debugw("Broadcasting message", "type", message.data.Type)
 	for to, _client := range channel.clients.Items() {
 		// send to everyone else in the channel
 		if to == from && !message.sendAll {
@@ -241,12 +247,19 @@ func (h *Hub) Broadcast(message *HubMessage) {
 			continue
 		}
 
+		if data == nil {
+			data = message.data.RawMessage()
+			if message.data.Type == actions.ApplyProgress {
+				config.Logger().Debugf("!!!!SENDING OVER THE WIRE!!! %s", data)
+			}
+		}
+
 		select {
-		case client.send <- message.data:
+		case client.send <- data:
 		default:
 			h.UnregisterClient(client)
 		}
 
-		config.Logger().Infow("Sent message to client", "client_id", to, "type", message.action)
+		config.Logger().Infow("Sent message to client", "from_client_id", from, "to_client_id", to, "type", message.data.Type)
 	}
 }

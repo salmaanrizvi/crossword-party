@@ -5,18 +5,19 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/salmaanrizvi/crossword-party/server/config"
 )
 
 //Message for generic redux message
 type Message struct {
-	Type          Action           `json:"type"`
-	From          uuid.UUID        `json:"from"`
-	Channel       uuid.UUID        `json:"channel"`
-	Timestamp     time.Time        `json:"timestamp"`
-	ClientVersion string           `json:"clientVersion"`
-	GameID        int              `json:"gameId"`
-	IsFromServer  bool             `json:"isFromServer"`
-	Payload       *json.RawMessage `json:"payload"`
+	Type          Action          `json:"type"`
+	From          uuid.UUID       `json:"from"`
+	Channel       uuid.UUID       `json:"channel"`
+	Timestamp     time.Time       `json:"timestamp"`
+	ClientVersion string          `json:"clientVersion"`
+	GameID        int             `json:"gameId"`
+	IsFromServer  bool            `json:"isFromServer"`
+	Payload       json.RawMessage `json:"payload"`
 }
 
 //NewMessageFrom parses websocket message into a Message struct
@@ -30,6 +31,19 @@ func NewMessageFrom(data []byte) (msg *Message, err error) {
 	return msg, nil
 }
 
+func (msg *Message) RawMessage() []byte {
+	start := time.Now()
+	defer func() {
+		config.Logger().Debugf("RawMessage parsing took %v", time.Now().Sub(start))
+	}()
+
+	data, err := json.Marshal(msg)
+	if err != nil {
+		return []byte("{}")
+	}
+	return data
+}
+
 // ApplyProgressMessage represents the "APPLY_PROGRESS" redux action
 // sent by clients to set the game board with filled in cells & timer
 type ApplyProgressMessage struct {
@@ -41,7 +55,6 @@ type ApplyProgressMessage struct {
 // Cell represents a single cell on a game board
 type Cell struct {
 	Index     int    `json:"index"`
-	Type      int    `json:"type"`
 	Clues     []int  `json:"clues"`
 	Answer    string `json:"answer"`
 	Checked   bool   `json:"checked"`
@@ -55,14 +68,14 @@ type Cell struct {
 
 // Status represents the games active status
 type Status struct {
-	AutoCheckEnabled bool             `json:"autocheckEnabled"`
-	BlankCells       int              `json:"blankCells"`
-	Firsts           *Firsts          `json:"firsts"`
-	IncorrectCells   int              `json:"incorrectCells"`
-	IsFilled         bool             `json:"isFilled"`
-	IsSolved         bool             `json:"isSolved"`
-	LastCommitID     string           `json:"lastCommitID"`
-	CurrentProgress  *json.RawMessage `json:"currentProgress"`
+	AutoCheckEnabled bool            `json:"autocheckEnabled"`
+	BlankCells       int             `json:"blankCells"`
+	Firsts           *Firsts         `json:"firsts"`
+	IncorrectCells   int             `json:"incorrectCells"`
+	IsFilled         bool            `json:"isFilled"`
+	IsSolved         bool            `json:"isSolved"`
+	LastCommitID     string          `json:"lastCommitID"`
+	CurrentProgress  json.RawMessage `json:"currentProgress"`
 }
 
 // Firsts is... unclear if this is useful
@@ -78,10 +91,23 @@ type Timer struct {
 }
 
 // NewApplyProgressMessageFrom returns a new ApplyProgressMessage from raw data received over the websocket
-func NewApplyProgressMessageFrom(data *json.RawMessage) (apMsg *ApplyProgressMessage, err error) {
+func NewApplyProgressMessageFrom(data json.RawMessage) (apMsg *ApplyProgressMessage, err error) {
 	apMsg = &ApplyProgressMessage{}
-	err = json.Unmarshal(*data, apMsg)
+	err = json.Unmarshal(data, apMsg)
 	return apMsg, err
+}
+
+func (ap *ApplyProgressMessage) RawMessage() []byte {
+	start := time.Now()
+	data, err := json.Marshal(ap)
+	defer func() {
+		config.Logger().Debugf("Apply Progress RawMessage parsing took %v", time.Now().Sub(start))
+		config.Logger().Debugf("RAW AP: %s", data)
+	}()
+	if err != nil {
+		return []byte("{}")
+	}
+	return data
 }
 
 // GetLatestProgress compares progress messages and returns the one which
