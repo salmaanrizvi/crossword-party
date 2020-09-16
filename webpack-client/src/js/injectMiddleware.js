@@ -20,11 +20,12 @@ const getChannel = () => {
 }
 
 const isValidWs = websocket => websocket && websocket.readyState == 1
+const isFromServer = action => action && action.isFromServer
 
 const connect = () => {
   const channel = getChannel()
   if (!channel) {
-    console.log("crossword party is not active!")
+    console.log("[connect]: crossword party is not active!")
     return null
   }
 
@@ -33,16 +34,19 @@ const connect = () => {
   ws.channel = channel
   ws.clientVersion = process.env.__CWP_APP_VERSION
 
-  ws.onopen = () => ws.send(
-    JSON.stringify({
-      type: __CROSSWORD_PARTY_REGISTER,
-      from: ws.from,
-      channel: ws.channel,
-      timestamp: (new Date).toISOString(),
-      clientVersion: ws.clientVersion,
-      gameId: ws.gameId,
-    })
-  )
+  ws.onopen = () => {
+    console.log("[onopen]: websocket connection opened")
+    ws.send(
+      JSON.stringify({
+        type: __CROSSWORD_PARTY_REGISTER,
+        from: ws.from,
+        channel: ws.channel,
+        timestamp: (new Date).toISOString(),
+        clientVersion: ws.clientVersion,
+        gameId: ws.gameId,
+      })
+    )
+  }
   
   ws.onmessage = msg => {
     const { data } = msg
@@ -51,7 +55,7 @@ const connect = () => {
     try {
       action = JSON.parse(data);
     } catch (e) {
-      console.error('error parsing message data', data);
+      console.error('[onmessage]: error parsing message data', data);
       return
     }
   
@@ -60,13 +64,14 @@ const connect = () => {
     if (action.from !== ws.from) {
       if (!ws.dispatch) return
 
+      console.log("[onmessage]: received message from server, dispatching locally", action)
       ws.dispatch(action)
     }
   }
 
   // TODO: what should we do if we receive a close event?
-  ws.onclose = (...args) => {
-    console.log('received close event', ...args)
+  ws.onclose = event => {
+    console.log('[onclose]: received close event', event)
   }
 
   return ws
@@ -86,11 +91,13 @@ const setGameIdMiddleware = websocket => store => next => action => {
   } = store.getState()
 
   if (!gameId) {
+    console.log("[setGameIdMiddleware]: unable to get game id from state yet")
     return next(action)
   }
 
   websocket.gameId = gameId
 
+  console.log("[setGameIdMiddleware]: setting game id")
   websocket.send(
     JSON.stringify({
       type: __CROSSWORD_PARTY_SET_GAME_ID,
@@ -105,19 +112,51 @@ const setGameIdMiddleware = websocket => store => next => action => {
   return next(action)
 }
 
+// const handleSyncGameRequest = store => {
+//   const state = store.getState()
+//   const {
+//     gamePageData: {
+//       cells,
+//       status,
+//       timer,
+//       modal
+//     } = {}
+//   } = state
+
+  
+// }
+
+// const handleCwpActionMiddleware = websocket => store => next => action => {
+//   if (!isValidWs(websocket)) {
+//     return next(action)
+//   }
+
+//   switch(action.type) {
+//     case '__CWP_SYNC_GAME': {
+//       handleSyncGameRequest(store)
+//     }
+//   }
+
+//   return next(action)
+// }
+
 const postActionMiddleware = websocket => store => next => action => {
   if (!isValidWs(websocket)) {
+    console.log("[postActionMiddleware]: invalid websocket, skipping postActionMiddleware!!!!!!")
     return next(action)
   }
 
   // Check if action was sent to us from websocket
-  if (!action.channel && isValidWs(websocket)) {
+  if (!isFromServer(action)) {
+    console.log("[postActionMiddleware]: action was not from server, sending up...", action.type)
     action.from = websocket.from
     action.channel = websocket.channel
     action.clientVersion = websocket.clientVersion
     action.gameId = websocket.gameId
     action.timestamp = (new Date).toISOString()
     websocket.send(JSON.stringify(action));  
+  } else {
+    console.log("[postActionMiddleware]: action IS from server, not sending up", action.type, action.isFromServer)
   }
 
   return next(action);
@@ -126,7 +165,8 @@ const postActionMiddleware = websocket => store => next => action => {
 // setDispatchMiddleware is solely meant to keep the referenced store
 // on the websocket instance up to date for when the 
 const setDispatchMiddleware = websocket => store => next => action => {
-  if (isValidWs(websocket) && !websocket.dispatch) {
+  if (websocket && !websocket.dispatch) {
+    console.log("[setDispatchMiddleware]: setting dispatch on websocket")
     websocket.dispatch = store.dispatch
   }
 
@@ -140,10 +180,12 @@ const setDispatchMiddleware = websocket => store => next => action => {
 // current players selected cell when another user makes a guess 
 const handleActionMiddleware = websocket => store => next => action => {
   if (!isValidWs(websocket)) {
+    console.log("[handleActionMiddleware]: invalid websocket, skipping middleware")
     return next(action)
   }
 
-  if (!action.channel) {
+  if (!isFromServer(action)) {
+    console.log("[handleActionMiddleware]: received local action, skipping...", action.type)
     return next(action)
   }
 
@@ -186,16 +228,31 @@ const logger = store => next => action => {
 const ws = connect()
 
 if (ws) {
+  console.log('client_id', ws.from)
   let mwares = [
+    setDispatchMiddleware(ws),
     setGameIdMiddleware(ws),
     handleActionMiddleware(ws),
-    setDispatchMiddleware(ws),
     postActionMiddleware(ws),
   ]
 
-  if (process.env.NODE_ENV === 'development') {
-    mwares.unshift(logger)
-  }
+  // if (process.env.NODE_ENV === 'development') {
+  //   mwares.unshift(logger)
+  // }
+
+
+  // window.addEventListener('message', event => {
+  //   if (!event.data || event.data.soure !== '__cwp') {
+  //     return
+  //   }
+
+  //   switch (event.data.type) {
+  //     case '__CWP_SYNC_GAME': {
+  //       ws.dispatch()
+  //     }
+  //   }
+  //     console.log('this is good data', event.data)
+  // })
 
   // key to backdoor :)
   window.devToolsExtension = () => applyMiddleware(...mwares)
